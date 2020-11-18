@@ -1,0 +1,165 @@
+definitions:
+  handler.RequestCreateUser:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handler.RequestUpdateUser:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handler.ResponseHealthcheck:
+    properties:
+      status:
+        type: string
+    type: object
+  handler.ResponseUser:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  handler.ResponseUsers:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/handler.ResponseUser'
+        type: array
+    type: object
+  handler.emptyResponse:
+    type: object
+info:
+  contact: {}
+paths:
+  /api/healthcheck:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseHealthcheck'
+      summary: Healthcheck
+      tags:
+      - healthcheck
+  /api/users:
+    get:
+      consumes:
+      - application/json
+      description: get users
+      parameters:
+      - default: 25
+        description: limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseUsers'
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RequestCreateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.ResponseUser'
+      summary: Create user
+      tags:
+      - users
+  /api/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete by user ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            $ref: '#/definitions/handler.emptyResponse'
+      summary: Delete user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: get user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseUser'
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update by json user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RequestUpdateUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseUser'
+      summary: Update user
+      tags:
+      - users
+swagger: "2.0"

@@ -1,0 +1,17 @@
+version: '2.4'
+services:
+
+  go-example:
+    build: .
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - MONGODB_CONNECTION_STRING=mongodb://mongo:27017
+      - MONGO_DBNAME=go-example
+    depends_on:
+     - mongo
+  
+  mongo:
+    image: mongo:4.2
+    ports:
+      - "27017:27017"
