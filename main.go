@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,16 +12,10 @@ import (
 	"github.com/zaharinea/go-example/pkg/handler"
 	"github.com/zaharinea/go-example/pkg/repository"
 	"github.com/zaharinea/go-example/pkg/service"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-// Trainer struct
-// type Trainer struct {
-// 	Name string
-// 	Age  int
-// 	City string
-// }
 
 func initDb(config *config.Config) *mongo.Database {
 	client, err := mongo.NewClient(options.Client().ApplyURI(config.MongoURI))
@@ -46,6 +41,22 @@ func initDb(config *config.Config) *mongo.Database {
 
 }
 
+// InitPrometheus initialize rometheus
+func InitPrometheus(r *gin.Engine) {
+	p := ginprometheus.NewPrometheus("gin")
+	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
+		url := c.Request.URL.Path
+		for _, p := range c.Params {
+			if p.Key == "id" {
+				url = strings.Replace(url, p.Value, ":id", 1)
+				break
+			}
+		}
+		return url
+	}
+	p.Use(r)
+}
+
 func main() {
 	logrus.SetFormatter(new(logrus.JSONFormatter))
 	logrus.SetLevel(logrus.DebugLevel)
@@ -56,7 +67,10 @@ func main() {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	r := handlers.InitRouter()
+	r := gin.New()
+	InitPrometheus(r)
+	handlers.InitRoutes(r)
+
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 

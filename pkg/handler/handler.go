@@ -20,13 +20,8 @@ func NewHandler(config *config.Config, services *service.Service) *Handler {
 	return &Handler{config: config, services: services}
 }
 
-// InitRouter return a initialized Router
-func (h *Handler) InitRouter() *gin.Engine {
-	r := gin.New()
-
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-
+// InitRoutes initialize endpoint
+func (h *Handler) InitRoutes(r *gin.Engine) {
 	url := ginSwagger.URL("/swagger/doc.json")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
 
@@ -36,5 +31,4 @@ func (h *Handler) InitRouter() *gin.Engine {
 	r.GET("/api/users/:id", h.GetUserByID)
 	r.PUT("/api/users/:id", h.UpdateUser)
 	r.DELETE("/api/users/:id", h.DeleteUserByID)
-	return r
 }
