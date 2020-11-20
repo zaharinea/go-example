@@ -16,7 +16,7 @@ swagger:
 	$(GOPATH)/bin/swag init
 
 build: swagger
-	go build 
+	go build -o $(BINARY_NAME) main.go
 
 docker-build: swagger
 	docker-compose build

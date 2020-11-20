@@ -59,7 +59,7 @@ func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]
 	}
 	defer cur.Close(ctx)
 
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem User
 		err := cur.Decode(&elem)
 		if err != nil {

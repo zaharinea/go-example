@@ -8,6 +8,8 @@ services:
       - APP_PORT=8000
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017
       - MONGO_DBNAME=go-example
+    ports:
+      - "8000:8000"
     depends_on:
      - mongo
   
