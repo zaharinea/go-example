@@ -2,6 +2,7 @@
 
 ## Run service
 ```
+cp .env.example .env
 make run
 ```
 

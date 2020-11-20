@@ -5,6 +5,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
 
 // Config struct
@@ -18,6 +21,15 @@ type Config struct {
 	PageSize   int64
 	LogLevel   string
 	LogFormat  string
+}
+
+// Simple helper function to read an environment or return error
+func getRequiredEnv(key string) string {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		logrus.Fatalf("Environment variable not set: %s", key)
+	}
+	return value
 }
 
 // Simple helper function to read an environment or return a default value
@@ -64,6 +76,11 @@ func getEnvAsSlice(name string, defaultVal []string, sep string) []string {
 
 // NewConfig returns a new Config struct
 func NewConfig() *Config {
+	err := godotenv.Load()
+	if err != nil {
+		logrus.Info("Error loading .env file")
+	}
+
 	appHost := getEnv("APP_HOST", "0.0.0.0")
 	appPort := getEnv("APP_PORT", "8000")
 	return &Config{
@@ -71,8 +88,8 @@ func NewConfig() *Config {
 		AppHost:    appHost,
 		AppPort:    appPort,
 		AppAddr:    fmt.Sprintf("%s:%s", appHost, appPort),
-		MongoURI:   os.Getenv("MONGODB_CONNECTION_STRING"),
-		MongoDB:    os.Getenv("MONGO_DBNAME"),
+		MongoURI:   getRequiredEnv("MONGODB_CONNECTION_STRING"),
+		MongoDB:    getRequiredEnv("MONGO_DBNAME"),
 		PageSize:   25,
 		LogLevel:   getEnv("LOGS_LEVEL", "INFO"),
 		LogFormat:  getEnv("LOGS_FORMAT", "TEXT"),
