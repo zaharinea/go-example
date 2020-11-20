@@ -4,8 +4,12 @@ services:
   go-example:
     build: .
     environment:
+      - APP_VERSION=0.1.0
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
+      - GIN_MODE=release  # debug or release
+      - LOGS_LEVEL=DEBUG
+      - LOGS_FORMAT=TEXT  # TEXT or JSON
       - MONGODB_CONNECTION_STRING=mongodb://mongo:27017
       - MONGO_DBNAME=go-example
     ports:

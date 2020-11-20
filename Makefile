@@ -22,7 +22,11 @@ docker-build: swagger
 	docker-compose build
 
 run: build
-	MONGODB_CONNECTION_STRING=$(MONGODB_CONNECTION_STRING) MONGO_DBNAME=$(MONGO_DBNAME) ./$(BINARY_NAME)
+	MONGODB_CONNECTION_STRING=$(MONGODB_CONNECTION_STRING) \
+	MONGO_DBNAME=$(MONGO_DBNAME) \
+	LOG_LEVEL=DEBUG \
+	GIN_MODE=debug \
+	./$(BINARY_NAME)
 
 docker-run: docker-build
 	docker-compose up

@@ -9,12 +9,15 @@ import (
 
 // Config struct
 type Config struct {
-	AppHost  string
-	AppPort  string
-	AppAddr  string
-	MongoURI string
-	MongoDB  string
-	PageSize int64
+	AppVersion string
+	AppHost    string
+	AppPort    string
+	AppAddr    string
+	MongoURI   string
+	MongoDB    string
+	PageSize   int64
+	LogLevel   string
+	LogFormat  string
 }
 
 // Simple helper function to read an environment or return a default value
@@ -64,11 +67,14 @@ func NewConfig() *Config {
 	appHost := getEnv("APP_HOST", "0.0.0.0")
 	appPort := getEnv("APP_PORT", "8000")
 	return &Config{
-		AppHost:  appHost,
-		AppPort:  appPort,
-		AppAddr:  fmt.Sprintf("%s:%s", appHost, appPort),
-		MongoURI: os.Getenv("MONGODB_CONNECTION_STRING"),
-		MongoDB:  os.Getenv("MONGO_DBNAME"),
-		PageSize: 25,
+		AppVersion: getEnv("APP_VERSION", "0.0.0"),
+		AppHost:    appHost,
+		AppPort:    appPort,
+		AppAddr:    fmt.Sprintf("%s:%s", appHost, appPort),
+		MongoURI:   os.Getenv("MONGODB_CONNECTION_STRING"),
+		MongoDB:    os.Getenv("MONGO_DBNAME"),
+		PageSize:   25,
+		LogLevel:   getEnv("LOGS_LEVEL", "INFO"),
+		LogFormat:  getEnv("LOGS_FORMAT", "TEXT"),
 	}
 }

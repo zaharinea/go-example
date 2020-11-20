@@ -6,8 +6,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// IUserUserRepository interface
-type IUserUserRepository interface {
+// IUserRepository interface
+type IUserRepository interface {
 	Create(ctx context.Context, user *User) (string, error)
 	List(ctx context.Context, limit int64, offset int64) ([]*User, error)
 	GetByID(ctx context.Context, userID string) (User, error)
@@ -17,7 +17,7 @@ type IUserUserRepository interface {
 
 // Repository struct
 type Repository struct {
-	User IUserUserRepository
+	User IUserRepository
 }
 
 // NewRepository returns a new Repository struct

@@ -17,7 +17,23 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func initDb(config *config.Config) *mongo.Database {
+// InitLogger initialize logger
+func InitLogger(config *config.Config) {
+	if strings.ToUpper(config.LogFormat) == "JSON" {
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	} else {
+		logrus.SetFormatter(&logrus.TextFormatter{})
+	}
+
+	level, err := logrus.ParseLevel(config.LogLevel)
+	if err != nil {
+		level = logrus.InfoLevel
+	}
+	logrus.SetLevel(level)
+}
+
+// InitDb initialize DB
+func InitDb(config *config.Config) *mongo.Database {
 	client, err := mongo.NewClient(options.Client().ApplyURI(config.MongoURI))
 	if err != nil {
 		logrus.Error(err)
@@ -41,7 +57,7 @@ func initDb(config *config.Config) *mongo.Database {
 
 }
 
-// InitPrometheus initialize rometheus
+// InitPrometheus initialize prometheus
 func InitPrometheus(r *gin.Engine) {
 	p := ginprometheus.NewPrometheus("gin")
 	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
@@ -57,12 +73,15 @@ func InitPrometheus(r *gin.Engine) {
 	p.Use(r)
 }
 
+// @title Go-example API
+// @version 1.0
+// @description This is a simple http server
 func main() {
-	logrus.SetFormatter(new(logrus.JSONFormatter))
-	logrus.SetLevel(logrus.DebugLevel)
-
 	config := config.NewConfig()
-	db := initDb(config)
+
+	InitLogger(config)
+
+	db := InitDb(config)
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
