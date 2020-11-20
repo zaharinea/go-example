@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zaharinea/go-example/pkg/repository"
@@ -19,8 +20,10 @@ type RequestUpdateUser struct {
 
 // ResponseUser struct
 type ResponseUser struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ResponseUsers struct
@@ -38,22 +41,24 @@ type ResponseUsers struct {
 // @Router /api/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
 	var requestData RequestCreateUser
-	err := c.BindJSON(&requestData)
-	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+
+	if err := c.BindJSON(&requestData); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	newUser := repository.User{Name: requestData.Name}
-	_, err = h.services.User.Create(c, &newUser)
+	_, err := h.services.User.Create(c, &newUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	c.JSON(http.StatusCreated, ResponseUser{
-		ID:   newUser.ID.Hex(),
-		Name: newUser.Name,
+		ID:        newUser.ID.Hex(),
+		Name:      newUser.Name,
+		CreatedAt: newUser.CreatedAt,
+		UpdatedAt: newUser.UpdatedAt,
 	})
 }
 
@@ -80,8 +85,10 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	items := make([]*ResponseUser, len(users))
 	for idx, user := range users {
 		items[idx] = &ResponseUser{
-			ID:   user.ID.Hex(),
-			Name: user.Name,
+			ID:        user.ID.Hex(),
+			Name:      user.Name,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
 		}
 	}
 
@@ -106,8 +113,10 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ResponseUser{
-		ID:   user.ID.Hex(),
-		Name: user.Name,
+		ID:        user.ID.Hex(),
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	})
 }
 
@@ -124,22 +133,24 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 func (h *Handler) UpdateUser(c *gin.Context) {
 	userID := c.Param("id")
 	var requestData RequestUpdateUser
-	err := c.BindJSON(&requestData)
-	if err != nil {
-		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+
+	if err := c.BindJSON(&requestData); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	updateUser := repository.UpdateUser{Name: requestData.Name}
-	err = h.services.User.Update(c, userID, updateUser)
+	user, err := h.services.User.UpdateAndReturn(c, userID, updateUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	c.JSON(http.StatusOK, ResponseUser{
-		ID:   userID,
-		Name: updateUser.Name,
+		ID:        user.ID.Hex(),
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	})
 }
 

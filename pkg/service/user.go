@@ -32,6 +32,10 @@ func (s *UserService) Update(ctx context.Context, userID string, update reposito
 	return s.repo.Update(ctx, userID, update)
 }
 
+func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (repository.User, error) {
+	return s.repo.UpdateAndReturn(ctx, userID, update)
+}
+
 func (s *UserService) DeleteByID(ctx context.Context, userID string) error {
 	return s.repo.DeleteByID(ctx, userID)
 }

@@ -25,25 +25,49 @@ make docker-run
 Create user
 ```
 curl -X POST -H "Content-Type: application/json" -d '{"name": "user1"}' http://localhost:8000/api/users
-{"id":"5fb5722853b2541a745bdc1c","name":"user1"}
+{
+    "id":"5fb5722853b2541a745bdc1c",
+    "name":"user1", 
+    "created_at":"2020-11-20T22:56:57.565Z",
+    "updated_at":"2020-11-20T22:56:57.565Z"
+}
 ```
 
 Get users
 ```
 curl -X GET http://localhost:8000/api/users
-{"items":[{"id":"5fb5722853b2541a745bdc1c","name":"user1"}]}
+{
+    "items":[
+        {
+            "id":"5fb5722853b2541a745bdc1c",
+            "name":"user1",
+            "created_at":"2020-11-20T22:56:57.565Z",
+            "updated_at":"2020-11-20T22:56:57.565Z"
+        }
+    ]
+}
 ```
 
 Get user
 ```
 curl -X GET http://localhost:8000/api/users/5fb5722853b2541a745bdc1c
-{"id":"5fb5722853b2541a745bdc1c","name":"user1"}
+{
+    "id":"5fb5722853b2541a745bdc1c",
+    "name":"user1", 
+    "created_at":"2020-11-20T22:56:57.565Z",
+    "updated_at":"2020-11-20T22:56:57.565Z"
+}
 ```
 
 Update user
 ```
 curl -X PUT -H "Content-Type: application/json" -d '{"name": "user2"}' http://localhost:8000/api/users/5fb5722853b2541a745bdc1c
-{"id":"5fb5722853b2541a745bdc1c","name":"user2"}
+{
+    "id":"5fb5722853b2541a745bdc1c",
+    "name":"user1", 
+    "created_at":"2020-11-20T22:56:57.565Z",
+    "updated_at":"2020-11-20T22:58:02.686Z"
+}
 ```
 
 Delete user

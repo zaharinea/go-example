@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -13,13 +14,16 @@ const usersCollection = "users"
 
 // User struct
 type User struct {
-	ID   primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name string             `bson:"name" json:"name"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name      string             `bson:"name" json:"name"`
+	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
 // UpdateUser struct
 type UpdateUser struct {
-	Name string `bson:"name" json:"name"`
+	Name      string    `bson:"name" json:"name"`
+	UpdatedAt time.Time `bson:"updated_at" json:"updated_at"`
 }
 
 // UserRepository struct
@@ -38,6 +42,10 @@ func NewUserRepository(db *mongo.Database) *UserRepository {
 
 // Create returns a created user ID
 func (r UserRepository) Create(ctx context.Context, user *User) (string, error) {
+	now := time.Now()
+	user.CreatedAt = now
+	user.UpdatedAt = now
+
 	insertResult, err := r.collection.InsertOne(ctx, user)
 	if err != nil {
 		return "", err
@@ -96,8 +104,32 @@ func (r UserRepository) Update(ctx context.Context, userID string, update Update
 	if err != nil {
 		return err
 	}
+	update.UpdatedAt = time.Now()
+
 	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.D{{"$set", update}})
 	return err
+}
+
+// UpdateAndReturn returns a updated User
+func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, update UpdateUser) (User, error) {
+	var user User
+
+	objectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return user, err
+	}
+	update.UpdatedAt = time.Now()
+	upsert := true
+	after := options.After
+
+	err = r.collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, bson.D{{"$set", update}}, &options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}).Decode(&user)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
 }
 
 // DeleteByID delete User by ID

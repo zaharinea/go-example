@@ -20,9 +20,13 @@ definitions:
     type: object
   handler.ResponseUser:
     properties:
+      created_at:
+        type: string
       id:
         type: string
       name:
+        type: string
+      updated_at:
         type: string
     type: object
   handler.ResponseUsers:

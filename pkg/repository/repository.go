@@ -12,6 +12,7 @@ type IUserRepository interface {
 	List(ctx context.Context, limit int64, offset int64) ([]*User, error)
 	GetByID(ctx context.Context, userID string) (User, error)
 	Update(ctx context.Context, userID string, update UpdateUser) error
+	UpdateAndReturn(ctx context.Context, userID string, update UpdateUser) (User, error)
 	DeleteByID(ctx context.Context, userID string) error
 }
 
