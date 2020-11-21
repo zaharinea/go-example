@@ -12,15 +12,16 @@ import (
 
 // Config struct
 type Config struct {
-	AppVersion string
-	AppHost    string
-	AppPort    string
-	AppAddr    string
-	MongoURI   string
-	MongoDB    string
-	PageSize   int64
-	LogLevel   string
-	LogFormat  string
+	AppVersion         string
+	AppHost            string
+	AppPort            string
+	AppAddr            string
+	MongoURI           string
+	MongoDbName        string
+	MongoMigrationsDir string
+	PageSize           int64
+	LogLevel           string
+	LogFormat          string
 }
 
 // Simple helper function to read an environment or return error
@@ -84,14 +85,15 @@ func NewConfig() *Config {
 	appHost := getEnv("APP_HOST", "0.0.0.0")
 	appPort := getEnv("APP_PORT", "8000")
 	return &Config{
-		AppVersion: getEnv("APP_VERSION", "0.0.0"),
-		AppHost:    appHost,
-		AppPort:    appPort,
-		AppAddr:    fmt.Sprintf("%s:%s", appHost, appPort),
-		MongoURI:   getRequiredEnv("MONGODB_CONNECTION_STRING"),
-		MongoDB:    getRequiredEnv("MONGO_DBNAME"),
-		PageSize:   25,
-		LogLevel:   getEnv("LOGS_LEVEL", "INFO"),
-		LogFormat:  getEnv("LOGS_FORMAT", "TEXT"),
+		AppVersion:         getEnv("APP_VERSION", "0.0.0"),
+		AppHost:            appHost,
+		AppPort:            appPort,
+		AppAddr:            fmt.Sprintf("%s:%s", appHost, appPort),
+		MongoURI:           getRequiredEnv("MONGODB_CONNECTION_STRING"),
+		MongoDbName:        getRequiredEnv("MONGO_DBNAME"),
+		MongoMigrationsDir: "file://migrations",
+		PageSize:           25,
+		LogLevel:           getEnv("LOGS_LEVEL", "INFO"),
+		LogFormat:          getEnv("LOGS_FORMAT", "TEXT"),
 	}
 }

@@ -20,6 +20,27 @@ make docker-run
 [http://localhost:8000/swagger/index.html](http://localhost:8000/swagger/index.html)
 
 
+## Migrations
+Install [golang-migrate](https://github.com/golang-migrate/migrate/tree/master/database/mongodb)
+```
+brew install golang-migrate
+```
+
+Create new migration
+```
+make new-migration NAME="create_indexes"
+```
+
+Apply all migrations
+```
+make apply-migrations
+```
+
+Revert all migrations
+```
+revert-migrations
+```
+
 ## API examples:
 
 Create user

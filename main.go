@@ -7,6 +7,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/mongodb"
+	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/sirupsen/logrus"
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/handler"
@@ -32,8 +36,8 @@ func InitLogger(config *config.Config) {
 	logrus.SetLevel(level)
 }
 
-// InitDb initialize DB
-func InitDb(config *config.Config) *mongo.Database {
+// InitDbClient initialize DB Client
+func InitDbClient(config *config.Config) *mongo.Client {
 	client, err := mongo.NewClient(options.Client().ApplyURI(config.MongoURI))
 	if err != nil {
 		logrus.Error(err)
@@ -52,9 +56,28 @@ func InitDb(config *config.Config) *mongo.Database {
 	if err != nil {
 		logrus.Error(err)
 	}
+	return client
+}
 
-	return client.Database(config.MongoDB)
+// ApplyMigrations apply all migrations
+func ApplyMigrations(config *config.Config, client *mongo.Client) {
+	mConfig := mongodb.Config{
+		DatabaseName: config.MongoDbName,
+		Locking:      mongodb.Locking{Enabled: true},
+	}
+	driver, err := mongodb.WithInstance(client, &mConfig)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
+	m, err := migrate.NewWithDatabaseInstance(config.MongoMigrationsDir, "mongodb", driver)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = m.Up()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 }
 
 // InitPrometheus initialize prometheus
@@ -81,8 +104,9 @@ func main() {
 
 	InitLogger(config)
 
-	db := InitDb(config)
-	repos := repository.NewRepository(db)
+	dbClient := InitDbClient(config)
+	ApplyMigrations(config, dbClient)
+	repos := repository.NewRepository(dbClient.Database(config.MongoDbName))
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 

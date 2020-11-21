@@ -1,9 +1,13 @@
+ifneq (,$(wildcard .env))
+    $(info Found .env file.)
+    include .env
+	export
+endif
+
 BINARY_NAME=go-example
 PACKAGES ?= $(shell go list -mod=mod ./... | grep -v /vendor)
 GOPATH = $(shell go env GOPATH)
 
-MONGODB_CONNECTION_STRING=mongodb://localhost:27017
-MONGO_DBNAME=go-example
 
 install:
 	go mod vendor
@@ -34,3 +38,12 @@ lint: install-tools
 	go vet -mod=mod $(PACKAGES)
 	$(GOPATH)/bin/golint $(PACKAGES)
 	$(GOPATH)/bin/errcheck $(PACKAGES)
+
+new-migration:
+	migrate create -ext mongodb -dir migrations -seq $(NAME)
+
+apply-migrations:
+	migrate -path migrations -database ${MONGODB_CONNECTION_STRING}/${MONGO_DBNAME} -verbose up
+
+revert-migrations:
+	migrate -path migrations -database ${MONGODB_CONNECTION_STRING}/${MONGO_DBNAME} -verbose down
