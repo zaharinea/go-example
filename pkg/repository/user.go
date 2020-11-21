@@ -119,7 +119,7 @@ func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, upda
 		return user, err
 	}
 	update.UpdatedAt = time.Now()
-	upsert := true
+	upsert := false
 	after := options.After
 
 	err = r.collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, bson.D{{"$set", update}}, &options.FindOneAndUpdateOptions{

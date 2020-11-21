@@ -92,14 +92,9 @@ func main() {
 
 	app.Use(gin.Logger(), gin.Recovery())
 
-	if config.SentryDSN != "" {
-		app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
-	}
-
 	err := app.Run(config.AppAddr)
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(1)
 	}
-
 }

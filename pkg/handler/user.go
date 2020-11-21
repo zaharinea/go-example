@@ -18,6 +18,17 @@ type RequestUpdateUser struct {
 	Name string `json:"name" binding:"required"`
 }
 
+// RequestListUsers struct
+type RequestListUsers struct {
+	Limit  int64 `form:"limit"`
+	Offset int64 `form:"offset"`
+}
+
+// RequestGetUser struct
+type RequestGetUser struct {
+	ID string `uri:"id" binding:"required"`
+}
+
 // ResponseUser struct
 type ResponseUser struct {
 	ID        string    `json:"id"`
@@ -40,14 +51,13 @@ type ResponseUsers struct {
 // @Success 201 {object} ResponseUser
 // @Router /api/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
-	var requestData RequestCreateUser
-
-	if err := c.BindJSON(&requestData); err != nil {
+	var req RequestCreateUser
+	if err := c.ShouldBindJSON(&req); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	newUser := repository.User{Name: requestData.Name}
+	newUser := repository.User{Name: req.Name}
 	_, err := h.services.User.Create(c, &newUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
@@ -68,15 +78,24 @@ func (h *Handler) CreateUser(c *gin.Context) {
 // @Tags users
 // @Accept  json
 // @Produce  json
-// @Param limit query int false "limit" mininum(1) maxinum(1000) default(25)
+// @Param limit query int false "limit" mininum(1) maxinum(100) default(25)
 // @Param offset query int false "offset" mininum(0) default(0)
 // @Success 200 {object} ResponseUsers
 // @Router /api/users [get]
 func (h *Handler) ListUsers(c *gin.Context) {
-	limit := Limit(c.Query("limit"), h.config.PageSize)
-	offset := Offset(c.Query("offset"), 0)
+	var req RequestListUsers
+	if err := c.ShouldBindQuery(&req); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.Limit <= 0 || req.Limit > 100 {
+		req.Limit = h.config.PageSize
+	}
+	if req.Offset < 0 {
+		req.Offset = 0
+	}
 
-	users, err := h.services.User.List(c, limit, offset)
+	users, err := h.services.User.List(c, req.Limit, req.Offset)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -105,8 +124,13 @@ func (h *Handler) ListUsers(c *gin.Context) {
 // @Success 200 {object} ResponseUser
 // @Router /api/users/{id} [get]
 func (h *Handler) GetUserByID(c *gin.Context) {
-	userID := c.Param("id")
-	user, err := h.services.User.GetByID(c, userID)
+	var req RequestGetUser
+	if err := c.ShouldBindUri(&req); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	user, err := h.services.User.GetByID(c, req.ID)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -131,16 +155,20 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 // @Success 200 {object} ResponseUser
 // @Router /api/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
-	userID := c.Param("id")
-	var requestData RequestUpdateUser
-
-	if err := c.BindJSON(&requestData); err != nil {
+	var reqURI RequestGetUser
+	if err := c.ShouldBindUri(&reqURI); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	updateUser := repository.UpdateUser{Name: requestData.Name}
-	user, err := h.services.User.UpdateAndReturn(c, userID, updateUser)
+	var reqData RequestUpdateUser
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	updateUser := repository.UpdateUser{Name: reqData.Name}
+	user, err := h.services.User.UpdateAndReturn(c, reqURI.ID, updateUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
