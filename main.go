@@ -58,7 +58,7 @@ func InitDb(config *config.Config) *mongo.Database {
 }
 
 // InitPrometheus initialize prometheus
-func InitPrometheus(r *gin.Engine) {
+func InitPrometheus(app *gin.Engine) {
 	p := ginprometheus.NewPrometheus("gin")
 	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
 		url := c.Request.URL.Path
@@ -70,7 +70,7 @@ func InitPrometheus(r *gin.Engine) {
 		}
 		return url
 	}
-	p.Use(r)
+	p.Use(app)
 }
 
 // @title Go-example API
@@ -86,16 +86,20 @@ func main() {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	r := gin.New()
-	InitPrometheus(r)
-	handlers.InitRoutes(r)
+	app := gin.New()
+	InitPrometheus(app)
+	handlers.InitRoutes(app)
 
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
+	app.Use(gin.Logger(), gin.Recovery())
 
-	err := r.Run(config.AppAddr)
+	if config.SentryDSN != "" {
+		app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
+	}
+
+	err := app.Run(config.AppAddr)
 	if err != nil {
 		logrus.Error(err)
 		os.Exit(1)
 	}
+
 }
