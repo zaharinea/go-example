@@ -6,14 +6,14 @@ cp .env.example .env
 make run
 ```
 
-## Run linters
-```
-make lint
-```
-
 ## Run service in docker
 ```
 make docker-run
+```
+
+## Run linters
+```
+make lint
 ```
 
 ## Swagger docs
@@ -38,7 +38,7 @@ make apply-migrations
 
 Revert all migrations
 ```
-revert-migrations
+make revert-migrations
 ```
 
 ## API examples:
@@ -54,7 +54,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"name": "user1"}' http://l
 }
 ```
 
-Get users
+List users
 ```
 curl -X GET http://localhost:8000/api/users
 {
