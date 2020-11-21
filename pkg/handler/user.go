@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zaharinea/go-example/pkg/repository"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // RequestCreateUser struct
@@ -132,6 +133,11 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 
 	user, err := h.services.User.GetByID(c, req.ID)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			newErrorResponse(c, http.StatusNotFound, err.Error())
+			return
+		}
+
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -170,6 +176,11 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	updateUser := repository.UpdateUser{Name: reqData.Name}
 	user, err := h.services.User.UpdateAndReturn(c, reqURI.ID, updateUser)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			newErrorResponse(c, http.StatusNotFound, err.Error())
+			return
+		}
+
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
