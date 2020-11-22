@@ -1,7 +1,9 @@
 package app
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
@@ -56,8 +58,21 @@ func NewApp(config *config.Config) *gin.Engine {
 	handlers := handler.NewHandler(config, services)
 
 	app := gin.New()
-	app.Use(gin.Logger(), gin.Recovery())
 	app.Use(handler.SetRequestIDMiddleware())
+	app.Use(gin.LoggerWithConfig(
+		gin.LoggerConfig{
+			SkipPaths: []string{"/api/healthcheck", "/metrics"},
+			Formatter: func(param gin.LogFormatterParams) string {
+				return fmt.Sprintf("%v method: %s path: %s response_time: %v status: %d request_id: %s\n",
+					param.TimeStamp.Format(time.RFC3339),
+					param.Method,
+					param.Path,
+					param.Latency.Seconds(),
+					param.StatusCode,
+					param.Keys[handler.ContextRequestIDKey],
+				)
+			}}))
+	app.Use(gin.Recovery())
 
 	InitPrometheus(app)
 	handlers.InitRoutes(app)
