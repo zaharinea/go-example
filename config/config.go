@@ -22,6 +22,7 @@ type Config struct {
 	PageSize           int64
 	LogLevel           string
 	LogFormat          string
+	SentryDSN          string
 }
 
 // Simple helper function to read an environment or return error
@@ -95,6 +96,7 @@ func NewConfig() *Config {
 		PageSize:           25,
 		LogLevel:           getEnv("LOGS_LEVEL", "INFO"),
 		LogFormat:          getEnv("LOGS_FORMAT", "TEXT"),
+		SentryDSN:          getEnv("SENTRY_DSN", ""),
 	}
 }
 

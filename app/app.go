@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	_ "github.com/golang-migrate/migrate/v4/database/mongodb"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -51,6 +53,11 @@ func InitPrometheus(app *gin.Engine) {
 func NewApp(config *config.Config) *gin.Engine {
 	InitLogger(config)
 
+	err := sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN, Release: config.AppVersion})
+	if err != nil {
+		logrus.Errorf("Sentry initialization failed: %v\n", err)
+	}
+
 	dbClient := repository.InitDbClient(config)
 	repository.ApplyDbMigrations(config, dbClient)
 	repos := repository.NewRepository(dbClient.Database(config.MongoDbName))
@@ -73,6 +80,7 @@ func NewApp(config *config.Config) *gin.Engine {
 				)
 			}}))
 	app.Use(gin.Recovery())
+	app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
 	InitPrometheus(app)
 	handlers.InitRoutes(app)
