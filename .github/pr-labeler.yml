@@ -1,0 +1,4 @@
+feature: ['feature/*']
+fix: ['fix/*', 'bug/*', 'bugfix/*']
+tech: ['chore/*', 'tech/*']
+hotfix: ['hotfix/*']
