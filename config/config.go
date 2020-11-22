@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -89,7 +90,7 @@ func NewConfig() *Config {
 		AppVersion:         getEnv("APP_VERSION", "0.0.0"),
 		AppHost:            appHost,
 		AppPort:            appPort,
-		AppAddr:            fmt.Sprintf("%s:%s", appHost, appPort),
+		AppAddr:            net.JoinHostPort(appHost, appPort),
 		MongoURI:           getRequiredEnv("MONGODB_CONNECTION_STRING"),
 		MongoDbName:        getRequiredEnv("MONGO_DBNAME"),
 		MongoMigrationsDir: "file://migrations",

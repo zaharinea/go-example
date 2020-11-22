@@ -58,28 +58,26 @@ func (r UserRepository) Create(ctx context.Context, user *User) (string, error) 
 func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]User, error) {
 	var results []User
 
-	findOptions := options.Find()
-	findOptions.SetSkip(offset).SetLimit(limit).SetSort(bson.D{{"_id", 1}})
+	opts := options.Find().SetSkip(offset).SetLimit(limit).SetSort(bson.D{bson.E{Key: "_id", Value: 1}})
 
-	cur, err := r.collection.Find(ctx, bson.D{{}}, findOptions)
+	cur, err := r.collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
-		return nil, err
+		return results, err
 	}
-	defer cur.Close(ctx)
 
 	for cur.Next(ctx) {
 		var elem User
 		err := cur.Decode(&elem)
 		if err != nil {
-			return nil, err
+			return results, err
 		}
-
 		results = append(results, elem)
 	}
 
 	if err := cur.Err(); err != nil {
-		return nil, err
+		return results, err
 	}
+	defer cur.Close(ctx)
 
 	return results, nil
 }
@@ -87,10 +85,12 @@ func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]
 // GetByID returns a User by ID
 func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error) {
 	var user User
+
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return user, err
 	}
+
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
 		return user, err
@@ -99,33 +99,35 @@ func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error
 }
 
 // Update returns a updated User
-func (r UserRepository) Update(ctx context.Context, userID string, update UpdateUser) error {
+func (r UserRepository) Update(ctx context.Context, userID string, updateUser UpdateUser) error {
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return err
 	}
-	update.UpdatedAt = time.Now()
+	updateUser.UpdatedAt = time.Now()
 
-	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.D{{"$set", update}})
+	filter := bson.M{"_id": objectID}
+	update := bson.D{bson.E{Key: "$set", Value: updateUser}}
+
+	_, err = r.collection.UpdateOne(ctx, filter, update)
 	return err
 }
 
 // UpdateAndReturn returns a updated User
-func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, update UpdateUser) (User, error) {
+func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, updateUser UpdateUser) (User, error) {
 	var user User
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return user, err
 	}
-	update.UpdatedAt = time.Now()
-	upsert := false
-	after := options.After
+	updateUser.UpdatedAt = time.Now()
 
-	err = r.collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, bson.D{{"$set", update}}, &options.FindOneAndUpdateOptions{
-		ReturnDocument: &after,
-		Upsert:         &upsert,
-	}).Decode(&user)
+	filter := bson.M{"_id": objectID}
+	update := bson.D{bson.E{Key: "$set", Value: updateUser}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(false)
+
+	err = r.collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&user)
 	if err != nil {
 		return user, err
 	}
@@ -138,6 +140,7 @@ func (r UserRepository) DeleteByID(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
 	return err
 }
