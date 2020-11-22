@@ -17,7 +17,9 @@ func performRequest(r http.Handler, method, path string) *httptest.ResponseRecor
 }
 
 func TestHealthcheck(t *testing.T) {
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+
 	handlers := &Handler{}
 
 	router.GET("/", handlers.Healthcheck)
