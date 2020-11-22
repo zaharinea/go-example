@@ -5,9 +5,13 @@ import (
 	"github.com/google/uuid"
 )
 
+//RequestIDHeaderName RequestID Header Name
 const RequestIDHeaderName = "X-Request-ID"
+
+//ContextRequestIDKey RequestID in Context
 const ContextRequestIDKey = "request_id"
 
+//SetRequestIDMiddleware middleware for storing RequestID in Context
 func SetRequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader(RequestIDHeaderName)
