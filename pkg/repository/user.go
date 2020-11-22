@@ -55,8 +55,8 @@ func (r UserRepository) Create(ctx context.Context, user *User) (string, error) 
 }
 
 // List returns User list
-func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]*User, error) {
-	var results []*User
+func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]User, error) {
+	var results []User
 
 	findOptions := options.Find()
 	findOptions.SetSkip(offset).SetLimit(limit).SetSort(bson.D{{"_id", 1}})
@@ -74,7 +74,7 @@ func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]
 			return nil, err
 		}
 
-		results = append(results, &elem)
+		results = append(results, elem)
 	}
 
 	if err := cur.Err(); err != nil {

@@ -20,7 +20,7 @@ func (s *UserService) Create(ctx context.Context, user *repository.User) (string
 	return s.repo.Create(ctx, user)
 }
 
-func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]*repository.User, error) {
+func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]repository.User, error) {
 	return s.repo.List(ctx, limit, offset)
 }
 

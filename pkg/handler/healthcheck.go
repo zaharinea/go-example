@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ResponseHealthcheck struct
 type ResponseHealthcheck struct {
 	Status string `json:"status"`
 }

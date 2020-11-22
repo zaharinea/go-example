@@ -56,9 +56,11 @@ func NewApp(config *config.Config) *gin.Engine {
 	handlers := handler.NewHandler(config, services)
 
 	app := gin.New()
+	app.Use(gin.Logger(), gin.Recovery())
+	app.Use(handler.SetRequestIDMiddleware())
+
 	InitPrometheus(app)
 	handlers.InitRoutes(app)
 
-	app.Use(gin.Logger(), gin.Recovery())
 	return app
 }

@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang-migrate/migrate/v4 v4.14.0
+	github.com/google/uuid v1.1.2
 	github.com/joho/godotenv v1.3.0
 	github.com/kisielk/errcheck v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.8.0 // indirect

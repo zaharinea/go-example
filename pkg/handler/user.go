@@ -43,6 +43,23 @@ type ResponseUsers struct {
 	Items []*ResponseUser `json:"items"`
 }
 
+func newResponseUser(user repository.User) *ResponseUser {
+	return &ResponseUser{
+		ID:        user.ID.Hex(),
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+}
+
+func newResponseUsers(users []repository.User) ResponseUsers {
+	items := make([]*ResponseUser, len(users))
+	for idx, user := range users {
+		items[idx] = newResponseUser(user)
+	}
+	return ResponseUsers{Items: items}
+}
+
 // CreateUser handler
 // @Summary Create user
 // @Tags users
@@ -65,12 +82,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, ResponseUser{
-		ID:        newUser.ID.Hex(),
-		Name:      newUser.Name,
-		CreatedAt: newUser.CreatedAt,
-		UpdatedAt: newUser.UpdatedAt,
-	})
+	c.JSON(http.StatusCreated, newResponseUser(newUser))
 }
 
 // ListUsers handler
@@ -102,17 +114,7 @@ func (h *Handler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	items := make([]*ResponseUser, len(users))
-	for idx, user := range users {
-		items[idx] = &ResponseUser{
-			ID:        user.ID.Hex(),
-			Name:      user.Name,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-		}
-	}
-
-	c.JSON(http.StatusOK, ResponseUsers{Items: items})
+	c.JSON(http.StatusOK, newResponseUsers(users))
 }
 
 // GetUserByID handler
@@ -142,12 +144,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ResponseUser{
-		ID:        user.ID.Hex(),
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, newResponseUser(user))
 }
 
 // UpdateUser handler
@@ -174,7 +171,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	}
 
 	updateUser := repository.UpdateUser{Name: reqData.Name}
-	user, err := h.services.User.UpdateAndReturn(c, reqURI.ID, updateUser)
+	updatedUser, err := h.services.User.UpdateAndReturn(c, reqURI.ID, updateUser)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			newErrorResponse(c, http.StatusNotFound, err.Error())
@@ -185,12 +182,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ResponseUser{
-		ID:        user.ID.Hex(),
-		Name:      user.Name,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, newResponseUser(updatedUser))
 }
 
 // DeleteUserByID handler

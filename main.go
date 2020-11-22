@@ -1,7 +1,8 @@
 package main
 
 import (
-	"os"
+	"net/http"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/zaharinea/go-example/app"
@@ -15,9 +16,12 @@ func main() {
 	c := config.NewConfig()
 	a := app.NewApp(c)
 
-	err := a.Run(c.AppAddr)
-	if err != nil {
-		logrus.Fatal(err)
-		os.Exit(1)
+	s := &http.Server{
+		Addr:           c.AppAddr,
+		Handler:        a,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
+	logrus.Fatal(s.ListenAndServe())
 }
