@@ -97,3 +97,10 @@ func NewConfig() *Config {
 		LogFormat:          getEnv("LOGS_FORMAT", "TEXT"),
 	}
 }
+
+// NewTestingConfig returns a new Config struct for tests
+func NewTestingConfig() *Config {
+	config := NewConfig()
+	config.MongoDbName = getEnv("MONGO_DBNAME_TEST", fmt.Sprintf("%s_test", config.MongoDbName))
+	return config
+}

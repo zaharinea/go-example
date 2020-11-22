@@ -11,6 +11,11 @@ make run
 make docker-run
 ```
 
+## Run tests
+```
+make test
+```
+
 ## Run linters
 ```
 make lint

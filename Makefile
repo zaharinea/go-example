@@ -39,6 +39,9 @@ lint: install-tools
 	$(GOPATH)/bin/golint $(PACKAGES)
 	$(GOPATH)/bin/errcheck $(PACKAGES)
 
+test:
+	go test -v -cover ./...
+
 new-migration:
 	migrate create -ext mongodb -dir migrations -seq $(NAME)
 
