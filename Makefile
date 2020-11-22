@@ -4,13 +4,12 @@ ifneq (,$(wildcard .env))
 	export
 endif
 
+SERVICE_NAME=go-example
 BINARY_NAME=go-example
 PACKAGES ?= $(shell go list -mod=mod ./... | grep -v /vendor)
 GOPATH = $(shell go env GOPATH)
-
-
-install:
-	go mod vendor
+DOCKER_COMPOSE=docker-compose -f docker-compose.yml
+DOCKER_COMPOSE_TEST=docker-compose -f docker-compose.yml -f docker-compose.test.yml
 
 install-tools:
 	go get golang.org/x/lint/golint
@@ -22,14 +21,8 @@ swagger:
 build: swagger
 	go build -o $(BINARY_NAME) main.go
 
-docker-build: swagger
-	docker-compose build
-
 run: build
 	./$(BINARY_NAME)
-
-docker-run: docker-build
-	docker-compose up
 
 clean:
 	go clean
@@ -50,3 +43,14 @@ apply-migrations:
 
 revert-migrations:
 	migrate -path migrations -database ${MONGODB_CONNECTION_STRING}/${MONGO_DBNAME} -verbose down
+
+
+docker-build: swagger
+	$(DOCKER_COMPOSE) build
+
+docker-run: docker-build
+	$(DOCKER_COMPOSE) up
+
+docker-test:
+	$(DOCKER_COMPOSE_TEST) build
+	$(DOCKER_COMPOSE_TEST) run --rm $(SERVICE_NAME) go test -v -cover ./...
