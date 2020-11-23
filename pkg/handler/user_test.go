@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/repository"
@@ -197,7 +196,7 @@ func (s *UsersSuite) TestDeleteOk() {
 	s.Require().Equal("", w.Body.String())
 
 	_, err = s.services.User.GetByID(s.ctx, s.user1.ID.Hex())
-	assert.Error(s.T(), err, mongo.ErrNoDocuments)
+	s.Require().Error(mongo.ErrNoDocuments, err)
 }
 
 func (s *UsersSuite) TestDeleteErrorNotFound() {
