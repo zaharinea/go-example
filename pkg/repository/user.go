@@ -53,8 +53,8 @@ func (r *UserRepository) Create(ctx context.Context, user *User) error {
 }
 
 // List returns User list
-func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([]User, error) {
-	var results []User
+func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([]*User, error) {
+	var results []*User
 
 	opts := options.Find().SetSkip(offset).SetLimit(limit).SetSort(bson.D{bson.E{Key: "_id", Value: 1}})
 
@@ -69,7 +69,7 @@ func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([
 		if err != nil {
 			return results, err
 		}
-		results = append(results, elem)
+		results = append(results, &elem)
 	}
 
 	if err := cur.Err(); err != nil {
@@ -81,19 +81,19 @@ func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([
 }
 
 // GetByID returns a User by ID
-func (r *UserRepository) GetByID(ctx context.Context, userID string) (User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, userID string) (*User, error) {
 	var user User
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return user, mongo.ErrNoDocuments
+		return &user, mongo.ErrNoDocuments
 	}
 
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
-		return user, err
+		return &user, err
 	}
-	return user, nil
+	return &user, nil
 }
 
 // Update returns a updated User
@@ -112,12 +112,12 @@ func (r *UserRepository) Update(ctx context.Context, userID string, updateUser U
 }
 
 // UpdateAndReturn returns a updated User
-func (r *UserRepository) UpdateAndReturn(ctx context.Context, userID string, updateUser UpdateUser) (User, error) {
+func (r *UserRepository) UpdateAndReturn(ctx context.Context, userID string, updateUser UpdateUser) (*User, error) {
 	var user User
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return user, mongo.ErrNoDocuments
+		return &user, mongo.ErrNoDocuments
 	}
 	updateUser.UpdatedAt = time.Now()
 
@@ -127,9 +127,9 @@ func (r *UserRepository) UpdateAndReturn(ctx context.Context, userID string, upd
 
 	err = r.collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&user)
 	if err != nil {
-		return user, err
+		return &user, err
 	}
-	return user, nil
+	return &user, nil
 }
 
 // DeleteByID delete User by ID

@@ -22,12 +22,12 @@ func (s *UserService) Create(ctx context.Context, user *repository.User) error {
 }
 
 //List method
-func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]repository.User, error) {
+func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]*repository.User, error) {
 	return s.repo.List(ctx, limit, offset)
 }
 
 //GetByID method
-func (s *UserService) GetByID(ctx context.Context, userID string) (repository.User, error) {
+func (s *UserService) GetByID(ctx context.Context, userID string) (*repository.User, error) {
 	return s.repo.GetByID(ctx, userID)
 }
 
@@ -37,7 +37,7 @@ func (s *UserService) Update(ctx context.Context, userID string, update reposito
 }
 
 //UpdateAndReturn method
-func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (repository.User, error) {
+func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (*repository.User, error) {
 	return s.repo.UpdateAndReturn(ctx, userID, update)
 }
 
