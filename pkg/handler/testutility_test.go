@@ -8,9 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/zaharinea/go-example/config"
-	"github.com/zaharinea/go-example/pkg/repository"
 )
 
 func TestMain(m *testing.M) {
@@ -21,10 +18,7 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-	c := config.NewTestingConfig()
-	dbClient := repository.InitDbClient(c)
-	repository.ApplyDbMigrations(c, dbClient)
-
+	// Do something here.
 	fmt.Printf("\033[1;36m%s\033[0m", "> Setup completed\n")
 }
 
