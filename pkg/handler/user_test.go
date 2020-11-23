@@ -3,8 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -54,10 +52,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		jsonBody := strings.NewReader("{\"name\": \"user\"}")
-		req, _ := http.NewRequest("POST", "/api/users", jsonBody)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		w := performRequest(router, "POST", "/api/users", "{\"name\": \"user\"}")
 		assert.Equal(t, http.StatusCreated, w.Code)
 
 		response := ResponseUser{}
@@ -70,10 +65,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		jsonBody := strings.NewReader("{}")
-		req, _ := http.NewRequest("POST", "/api/users", jsonBody)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		w := performRequest(router, "POST", "/api/users", "{}")
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		response := gin.H{}
@@ -88,10 +80,7 @@ func TestListUsers(t *testing.T) {
 		err = h.services.User.Create(context.Background(), &user1)
 		assert.NoError(t, err)
 
-		jsonBody := strings.NewReader("{\"name\": \"user\"}")
-		req, _ := http.NewRequest("PUT", "/api/users/"+user1.ID.Hex(), jsonBody)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		w := performRequest(router, "PUT", "/api/users/"+user1.ID.Hex(), "{\"name\": \"user\"}")
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		response := ResponseUser{}
@@ -109,10 +98,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		jsonBody := strings.NewReader("{}")
-		req, _ := http.NewRequest("PUT", "/api/users/"+user1.ID.Hex(), jsonBody)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		w := performRequest(router, "PUT", "/api/users/"+user1.ID.Hex(), "{}")
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		response := gin.H{}
@@ -125,7 +111,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users/5fbaeab741e97bef8525d6ab")
+		w := performRequest(router, "GET", "/api/users/5fbaeab741e97bef8525d6ab", "")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 
 		response := errorResponse{}
@@ -138,7 +124,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users/1")
+		w := performRequest(router, "GET", "/api/users/1", "")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 
 		response := errorResponse{}
@@ -153,7 +139,7 @@ func TestListUsers(t *testing.T) {
 		err = h.services.User.Create(context.Background(), &user1)
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users/"+user1.ID.Hex())
+		w := performRequest(router, "GET", "/api/users/"+user1.ID.Hex(), "")
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		response := ResponseUser{}
@@ -167,7 +153,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users")
+		w := performRequest(router, "GET", "/api/users", "")
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "{\"items\":[]}", w.Body.String())
 	})
@@ -180,7 +166,7 @@ func TestListUsers(t *testing.T) {
 		err = h.services.User.Create(context.Background(), &user2)
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users")
+		w := performRequest(router, "GET", "/api/users", "")
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		response := ResponseUsers{}
@@ -201,7 +187,7 @@ func TestListUsers(t *testing.T) {
 		err = h.services.User.Create(context.Background(), &user2)
 		assert.NoError(t, err)
 
-		w := performRequest(router, "GET", "/api/users?limit=1&offset=1")
+		w := performRequest(router, "GET", "/api/users?limit=1&offset=1", "")
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		response := ResponseUsers{}
@@ -218,7 +204,7 @@ func TestListUsers(t *testing.T) {
 		err = h.services.User.Create(context.Background(), &user1)
 		assert.NoError(t, err)
 
-		w := performRequest(router, "DELETE", "/api/users/"+user1.ID.Hex())
+		w := performRequest(router, "DELETE", "/api/users/"+user1.ID.Hex(), "")
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Equal(t, "", w.Body.String())
 
@@ -230,7 +216,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		w := performRequest(router, "DELETE", "/api/users/5fbaeab741e97bef8525d6ab")
+		w := performRequest(router, "DELETE", "/api/users/5fbaeab741e97bef8525d6ab", "")
 		assert.Equal(t, http.StatusNoContent, w.Code) // FIXME should 404
 		assert.Equal(t, "", w.Body.String())
 	})
@@ -239,7 +225,7 @@ func TestListUsers(t *testing.T) {
 		err := h.services.User.DeleteAll(context.Background())
 		assert.NoError(t, err)
 
-		w := performRequest(router, "DELETE", "/api/users/1")
+		w := performRequest(router, "DELETE", "/api/users/1", "")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 
 		response := errorResponse{}
