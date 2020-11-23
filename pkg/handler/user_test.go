@@ -21,9 +21,7 @@ func SetupHandlers() *Handler {
 
 	c := config.NewTestingConfig()
 	dbClient := repository.InitDbClient(c)
-	db := dbClient.Database(c.MongoDbName)
-	repository.ApplyDbMigrations(c, dbClient)
-	repos := repository.NewRepository(db)
+	repos := repository.NewRepository(dbClient.Database(c.MongoDbName))
 	services := service.NewService(repos)
 	handlers := NewHandler(c, services)
 
