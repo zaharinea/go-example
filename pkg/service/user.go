@@ -45,8 +45,3 @@ func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update
 func (s *UserService) DeleteByID(ctx context.Context, userID string) error {
 	return s.repo.DeleteByID(ctx, userID)
 }
-
-// DeleteAll delete all
-func (s *UserService) DeleteAll(ctx context.Context) error {
-	return s.repo.DeleteAll(ctx)
-}

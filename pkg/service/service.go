@@ -14,7 +14,6 @@ type IUserService interface {
 	Update(ctx context.Context, userID string, update repository.UpdateUser) error
 	UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (*repository.User, error)
 	DeleteByID(ctx context.Context, userID string) error
-	DeleteAll(ctx context.Context) error
 }
 
 // Service struct

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/repository"
 	"github.com/zaharinea/go-example/pkg/service"
@@ -16,220 +17,204 @@ import (
 	"golang.org/x/net/context"
 )
 
-func SetupHandlers() *Handler {
-	gin.SetMode(gin.ReleaseMode)
-
-	c := config.NewTestingConfig()
-	dbClient := repository.InitDbClient(c)
-	repos := repository.NewRepository(dbClient.Database(c.MongoDbName))
-	services := service.NewService(repos)
-	handlers := NewHandler(c, services)
-
-	return handlers
+type UsersSuite struct {
+	suite.Suite
+	ctx      context.Context
+	config   *config.Config
+	db       *mongo.Database
+	router   *gin.Engine
+	repos    *repository.Repository
+	services *service.Service
+	handlers *Handler
+	user1    repository.User
+	user2    repository.User
 }
 
-func TestListUsers(t *testing.T) {
-	h := SetupHandlers()
-	router := gin.New()
-	h.InitRoutes(router)
+func (s *UsersSuite) SetupSuite() {
+	gin.SetMode(gin.ReleaseMode)
+	s.ctx = context.Background()
+	s.config = config.NewTestingConfig()
+	dbClient := repository.InitDbClient(s.config)
+	s.db = dbClient.Database(s.config.MongoDbName)
+	s.repos = repository.NewRepository(s.db)
+	s.services = service.NewService(s.repos)
+	s.handlers = NewHandler(s.config, s.services)
 
-	user1 := repository.User{
+	s.router = gin.New()
+	s.handlers.InitRoutes(s.router)
+
+	s.user1 = repository.User{
 		ID:        primitive.NewObjectID(),
 		Name:      "User1",
 		CreatedAt: time.Date(2020, 11, 23, 23, 0, 0, 0, time.UTC),
 		UpdatedAt: time.Date(2020, 11, 23, 23, 0, 0, 0, time.UTC),
 	}
-	user2 := repository.User{
+	s.user2 = repository.User{
 		ID:        primitive.NewObjectID(),
 		Name:      "User2",
 		CreatedAt: time.Date(2020, 11, 23, 23, 0, 0, 0, time.UTC),
 		UpdatedAt: time.Date(2020, 11, 23, 23, 0, 0, 0, time.UTC),
 	}
+}
 
-	t.Run("Create", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+func (s *UsersSuite) SetupTest() {
+	err := s.repos.User.DeleteAll(s.ctx)
+	s.Require().NoError(err)
+}
 
-		w := performRequest(router, "POST", "/api/users", "{\"name\": \"user\"}")
-		assert.Equal(t, http.StatusCreated, w.Code)
+func (s *UsersSuite) TearDownTest() {}
 
-		response := ResponseUser{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "user", response.Name)
-	})
+func (s *UsersSuite) TearSuite() {}
 
-	t.Run("Create Invalid request", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+func (s *UsersSuite) TestCreateOk() {
+	w := performRequest(s.router, "POST", "/api/users", "{\"name\": \"user\"}")
+	s.Require().Equal(http.StatusCreated, w.Code)
 
-		w := performRequest(router, "POST", "/api/users", "{}")
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+	response := ResponseUser{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal("user", response.Name)
+}
 
-		response := gin.H{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, gin.H{"message": "Key: 'RequestCreateUser.Name' Error:Field validation for 'Name' failed on the 'required' tag"}, response)
-	})
+func (s *UsersSuite) TestCreateErrorInvalidRequest() {
+	w := performRequest(s.router, "POST", "/api/users", "{}")
+	s.Require().Equal(http.StatusBadRequest, w.Code)
 
-	t.Run("Update", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user1)
-		assert.NoError(t, err)
+	response := gin.H{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal(gin.H{"message": "Key: 'RequestCreateUser.Name' Error:Field validation for 'Name' failed on the 'required' tag"}, response)
+}
 
-		w := performRequest(router, "PUT", "/api/users/"+user1.ID.Hex(), "{\"name\": \"user\"}")
-		assert.Equal(t, http.StatusOK, w.Code)
+func (s *UsersSuite) TestUpdateOk() {
+	err := s.services.User.Create(s.ctx, &s.user1)
+	s.Require().NoError(err)
 
-		response := ResponseUser{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "user", response.Name)
+	w := performRequest(s.router, "PUT", "/api/users/"+s.user1.ID.Hex(), "{\"name\": \"user\"}")
+	s.Require().Equal(http.StatusOK, w.Code)
 
-		updatedUser, err := h.services.User.GetByID(context.Background(), user1.ID.Hex())
-		assert.NoError(t, err)
-		assert.Equal(t, "user", updatedUser.Name)
+	response := ResponseUser{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal("user", response.Name)
 
-	})
+	updatedUser, err := s.services.User.GetByID(s.ctx, s.user1.ID.Hex())
+	s.Require().NoError(err)
+	s.Require().Equal("user", updatedUser.Name)
+}
 
-	t.Run("Update Invalid request", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+func (s *UsersSuite) TestUpdateErrorInvalidRequest() {
+	w := performRequest(s.router, "PUT", "/api/users/"+s.user1.ID.Hex(), "{}")
+	s.Require().Equal(http.StatusBadRequest, w.Code)
 
-		w := performRequest(router, "PUT", "/api/users/"+user1.ID.Hex(), "{}")
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+	response := gin.H{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal(gin.H{"message": "Key: 'RequestUpdateUser.Name' Error:Field validation for 'Name' failed on the 'required' tag"}, response)
+}
+func (s *UsersSuite) TestGetByIDErrorNotFound() {
+	w := performRequest(s.router, "GET", "/api/users/5fbaeab741e97bef8525d6ab", "")
+	s.Require().Equal(http.StatusNotFound, w.Code)
 
-		response := gin.H{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, gin.H{"message": "Key: 'RequestUpdateUser.Name' Error:Field validation for 'Name' failed on the 'required' tag"}, response)
-	})
+	response := errorResponse{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal("mongo: no documents in result", response.Message)
+}
 
-	t.Run("GetByID NotFound", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+func (s *UsersSuite) TestGetByIDErrorInvalidID() {
+	w := performRequest(s.router, "GET", "/api/users/1", "")
+	s.Require().Equal(http.StatusNotFound, w.Code)
 
-		w := performRequest(router, "GET", "/api/users/5fbaeab741e97bef8525d6ab", "")
-		assert.Equal(t, http.StatusNotFound, w.Code)
+	response := errorResponse{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal("mongo: no documents in result", response.Message)
+}
 
-		response := errorResponse{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "mongo: no documents in result", response.Message)
-	})
+func (s *UsersSuite) TestGetByIDOk() {
+	err := s.services.User.Create(s.ctx, &s.user1)
+	s.Require().NoError(err)
 
-	t.Run("GetByID InvalidID", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+	w := performRequest(s.router, "GET", "/api/users/"+s.user1.ID.Hex(), "")
+	s.Require().Equal(http.StatusOK, w.Code)
 
-		w := performRequest(router, "GET", "/api/users/1", "")
-		assert.Equal(t, http.StatusNotFound, w.Code)
+	response := ResponseUser{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal(s.user1.ID.Hex(), response.ID)
+	s.Require().Equal(s.user1.Name, response.Name)
+}
 
-		response := errorResponse{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "mongo: no documents in result", response.Message)
-	})
+func (s *UsersSuite) TestListOkEmpty() {
+	w := performRequest(s.router, "GET", "/api/users", "")
+	s.Require().Equal(http.StatusOK, w.Code)
+	s.Require().Equal("{\"items\":[]}", w.Body.String())
+}
 
-	t.Run("GetByID", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user1)
-		assert.NoError(t, err)
+func (s *UsersSuite) TestListOk() {
+	err := s.services.User.Create(s.ctx, &s.user1)
+	s.Require().NoError(err)
+	err = s.services.User.Create(s.ctx, &s.user2)
+	s.Require().NoError(err)
 
-		w := performRequest(router, "GET", "/api/users/"+user1.ID.Hex(), "")
-		assert.Equal(t, http.StatusOK, w.Code)
+	w := performRequest(s.router, "GET", "/api/users", "")
+	s.Require().Equal(http.StatusOK, w.Code)
 
-		response := ResponseUser{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, user1.ID.Hex(), response.ID)
-		assert.Equal(t, user1.Name, response.Name)
-	})
+	response := ResponseUsers{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(response.Items))
+	s.Require().Equal(s.user1.ID.Hex(), response.Items[0].ID)
+	s.Require().Equal(s.user1.Name, response.Items[0].Name)
+	s.Require().Equal(s.user2.ID.Hex(), response.Items[1].ID)
+	s.Require().Equal(s.user2.Name, response.Items[1].Name)
+}
 
-	t.Run("List Empty", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
+func (s *UsersSuite) TestListOkWithLimitAndOffset() {
+	err := s.services.User.Create(s.ctx, &s.user1)
+	s.Require().NoError(err)
+	err = s.services.User.Create(s.ctx, &s.user2)
+	s.Require().NoError(err)
 
-		w := performRequest(router, "GET", "/api/users", "")
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Equal(t, "{\"items\":[]}", w.Body.String())
-	})
+	w := performRequest(s.router, "GET", "/api/users?limit=1&offset=1", "")
+	s.Require().Equal(http.StatusOK, w.Code)
 
-	t.Run("List Ok", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user1)
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user2)
-		assert.NoError(t, err)
+	response := ResponseUsers{}
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(response.Items))
+	s.Require().Equal(s.user2.ID.Hex(), response.Items[0].ID)
+	s.Require().Equal(s.user2.Name, response.Items[0].Name)
+}
 
-		w := performRequest(router, "GET", "/api/users", "")
-		assert.Equal(t, http.StatusOK, w.Code)
+func (s *UsersSuite) TestDeleteOk() {
+	err := s.services.User.Create(s.ctx, &s.user1)
+	s.Require().NoError(err)
 
-		response := ResponseUsers{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(response.Items))
-		assert.Equal(t, user1.ID.Hex(), response.Items[0].ID)
-		assert.Equal(t, user1.Name, response.Items[0].Name)
-		assert.Equal(t, user2.ID.Hex(), response.Items[1].ID)
-		assert.Equal(t, user2.Name, response.Items[1].Name)
-	})
+	w := performRequest(s.router, "DELETE", "/api/users/"+s.user1.ID.Hex(), "")
+	s.Require().Equal(http.StatusNoContent, w.Code)
+	s.Require().Equal("", w.Body.String())
 
-	t.Run("List Ok with limit and offset", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user1)
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user2)
-		assert.NoError(t, err)
+	_, err = s.services.User.GetByID(s.ctx, s.user1.ID.Hex())
+	assert.Error(s.T(), err, mongo.ErrNoDocuments)
+}
 
-		w := performRequest(router, "GET", "/api/users?limit=1&offset=1", "")
-		assert.Equal(t, http.StatusOK, w.Code)
+func (s *UsersSuite) TestDeleteErrorNotFound() {
+	w := performRequest(s.router, "DELETE", "/api/users/5fbaeab741e97bef8525d6ab", "")
+	s.Require().Equal(http.StatusNoContent, w.Code) // FIXME should 404
+	s.Require().Equal("", w.Body.String())
+}
+func (s *UsersSuite) TestDeleteErrorInvalidID() {
+	w := performRequest(s.router, "DELETE", "/api/users/1", "")
+	s.Require().Equal(http.StatusNotFound, w.Code)
 
-		response := ResponseUsers{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(response.Items))
-		assert.Equal(t, user2.ID.Hex(), response.Items[0].ID)
-		assert.Equal(t, user2.Name, response.Items[0].Name)
-	})
+	response := errorResponse{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Require().Equal("mongo: no documents in result", response.Message)
+}
 
-	t.Run("Delete Ok", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-		err = h.services.User.Create(context.Background(), &user1)
-		assert.NoError(t, err)
-
-		w := performRequest(router, "DELETE", "/api/users/"+user1.ID.Hex(), "")
-		assert.Equal(t, http.StatusNoContent, w.Code)
-		assert.Equal(t, "", w.Body.String())
-
-		_, err = h.services.User.GetByID(context.Background(), user1.ID.Hex())
-		assert.Error(t, err, mongo.ErrNoDocuments)
-	})
-
-	t.Run("Delete NotFound", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-
-		w := performRequest(router, "DELETE", "/api/users/5fbaeab741e97bef8525d6ab", "")
-		assert.Equal(t, http.StatusNoContent, w.Code) // FIXME should 404
-		assert.Equal(t, "", w.Body.String())
-	})
-
-	t.Run("Delete InvalidID", func(t *testing.T) {
-		err := h.services.User.DeleteAll(context.Background())
-		assert.NoError(t, err)
-
-		w := performRequest(router, "DELETE", "/api/users/1", "")
-		assert.Equal(t, http.StatusNotFound, w.Code)
-
-		response := errorResponse{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, "mongo: no documents in result", response.Message)
-	})
-
+func TestUsersSuite(t *testing.T) {
+	suite.Run(t, new(UsersSuite))
 }

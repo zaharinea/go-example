@@ -5,17 +5,28 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestHealthcheck(t *testing.T) {
+type HealthcheckSuite struct {
+	suite.Suite
+	router   *gin.Engine
+	handlers *Handler
+}
+
+func (s *HealthcheckSuite) SetupSuite() {
 	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
+	s.router = gin.New()
+	s.handlers = &Handler{}
+}
 
-	handlers := &Handler{}
+func (s *HealthcheckSuite) TestHealthcheck() {
+	s.router.GET("/", s.handlers.Healthcheck)
+	w := performRequest(s.router, "GET", "/", "")
+	s.Require().Equal(http.StatusOK, w.Code)
+	s.Require().Equal("{\"status\":\"ok\"}", w.Body.String())
+}
 
-	router.GET("/", handlers.Healthcheck)
-	w := performRequest(router, "GET", "/", "")
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "{\"status\":\"ok\"}", w.Body.String())
+func TestHealthcheckSuite(t *testing.T) {
+	suite.Run(t, new(HealthcheckSuite))
 }
