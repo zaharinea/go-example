@@ -2,7 +2,9 @@ version: '2.4'
 services:
 
   go-example:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     environment:
       - APP_VERSION=0.1.0
       - APP_HOST=0.0.0.0

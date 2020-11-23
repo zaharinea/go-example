@@ -4,4 +4,4 @@ services:
   go-example:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: docker/Dockerfile.test
