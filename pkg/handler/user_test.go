@@ -25,7 +25,7 @@ func SetupHandlers() *Handler {
 	repository.ApplyDbMigrations(c, dbClient)
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
-	handlers := NewHandler(c, repos, services)
+	handlers := NewHandler(c, services)
 
 	return handlers
 }
@@ -43,22 +43,22 @@ func TestListUsers(t *testing.T) {
 	}
 
 	t.Run("GetByID NotFound", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
+		h.services.User.DeleteAll(context.Background())
 
 		w := performRequest(router, "GET", "/api/users/5fbaeab741e97bef8525d6ab")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 
 	t.Run("GetByID InvalidID", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
+		h.services.User.DeleteAll(context.Background())
 
 		w := performRequest(router, "GET", "/api/users/1")
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 
 	t.Run("GetByID", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
-		h.repos.User.Create(context.Background(), &user1)
+		h.services.User.DeleteAll(context.Background())
+		h.services.User.Create(context.Background(), &user1)
 
 		w := performRequest(router, "GET", "/api/users/"+user1.ID.Hex())
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -71,7 +71,7 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("List Empty", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
+		h.services.User.DeleteAll(context.Background())
 
 		w := performRequest(router, "GET", "/api/users")
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -79,8 +79,8 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("List Ok", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
-		h.repos.User.Create(context.Background(), &user1)
+		h.services.User.DeleteAll(context.Background())
+		h.services.User.Create(context.Background(), &user1)
 
 		w := performRequest(router, "GET", "/api/users")
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -94,25 +94,25 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Delete Ok", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
-		h.repos.User.Create(context.Background(), &user1)
+		h.services.User.DeleteAll(context.Background())
+		h.services.User.Create(context.Background(), &user1)
 
 		w := performRequest(router, "DELETE", "/api/users/"+user1.ID.Hex())
 		assert.Equal(t, http.StatusNoContent, w.Code)
 
-		_, err := h.repos.User.GetByID(context.Background(), user1.ID.Hex())
+		_, err := h.services.User.GetByID(context.Background(), user1.ID.Hex())
 		assert.Error(t, err, mongo.ErrNoDocuments)
 	})
 
 	t.Run("Delete NotFound", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
+		h.services.User.DeleteAll(context.Background())
 
 		w := performRequest(router, "DELETE", "/api/users/5fbaeab741e97bef8525d6ab")
 		assert.Equal(t, http.StatusNoContent, w.Code)
 	})
 
 	t.Run("Delete InvalidID", func(t *testing.T) {
-		h.repos.User.DeleteAll(context.Background())
+		h.services.User.DeleteAll(context.Background())
 
 		w := performRequest(router, "DELETE", "/api/users/1")
 		assert.Equal(t, http.StatusNotFound, w.Code)

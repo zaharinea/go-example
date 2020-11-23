@@ -28,34 +28,32 @@ type UpdateUser struct {
 
 // UserRepository struct
 type UserRepository struct {
-	db         *mongo.Database
 	collection *mongo.Collection
 }
 
 // NewUserRepository returns a new UserRepository struct
 func NewUserRepository(db *mongo.Database) *UserRepository {
 	return &UserRepository{
-		db:         db,
 		collection: db.Collection(usersCollection),
 	}
 }
 
 // Create returns a created user ID
-func (r UserRepository) Create(ctx context.Context, user *User) (string, error) {
+func (r *UserRepository) Create(ctx context.Context, user *User) error {
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
 
 	insertResult, err := r.collection.InsertOne(ctx, user)
 	if err != nil {
-		return "", err
+		return err
 	}
 	user.ID = insertResult.InsertedID.(primitive.ObjectID)
-	return insertResult.InsertedID.(primitive.ObjectID).Hex(), nil
+	return nil
 }
 
 // List returns User list
-func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]User, error) {
+func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([]User, error) {
 	var results []User
 
 	opts := options.Find().SetSkip(offset).SetLimit(limit).SetSort(bson.D{bson.E{Key: "_id", Value: 1}})
@@ -83,7 +81,7 @@ func (r UserRepository) List(ctx context.Context, limit int64, offset int64) ([]
 }
 
 // GetByID returns a User by ID
-func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, userID string) (User, error) {
 	var user User
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
@@ -99,7 +97,7 @@ func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error
 }
 
 // Update returns a updated User
-func (r UserRepository) Update(ctx context.Context, userID string, updateUser UpdateUser) error {
+func (r *UserRepository) Update(ctx context.Context, userID string, updateUser UpdateUser) error {
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return mongo.ErrNoDocuments
@@ -114,7 +112,7 @@ func (r UserRepository) Update(ctx context.Context, userID string, updateUser Up
 }
 
 // UpdateAndReturn returns a updated User
-func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, updateUser UpdateUser) (User, error) {
+func (r *UserRepository) UpdateAndReturn(ctx context.Context, userID string, updateUser UpdateUser) (User, error) {
 	var user User
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
@@ -135,7 +133,7 @@ func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, upda
 }
 
 // DeleteByID delete User by ID
-func (r UserRepository) DeleteByID(ctx context.Context, userID string) error {
+func (r *UserRepository) DeleteByID(ctx context.Context, userID string) error {
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return mongo.ErrNoDocuments
@@ -146,7 +144,7 @@ func (r UserRepository) DeleteByID(ctx context.Context, userID string) error {
 }
 
 // DeleteAll delete all
-func (r UserRepository) DeleteAll(ctx context.Context) error {
+func (r *UserRepository) DeleteAll(ctx context.Context) error {
 	_, err := r.collection.DeleteMany(ctx, bson.M{})
 	return err
 }

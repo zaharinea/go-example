@@ -76,7 +76,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	newUser := repository.User{Name: req.Name}
-	_, err := h.services.User.Create(c, &newUser)
+	err := h.services.User.Create(c, &newUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

@@ -17,7 +17,7 @@ func NewUserService(repo repository.IUserRepository) *UserService {
 }
 
 //Create method
-func (s *UserService) Create(ctx context.Context, user *repository.User) (string, error) {
+func (s *UserService) Create(ctx context.Context, user *repository.User) error {
 	return s.repo.Create(ctx, user)
 }
 
@@ -44,4 +44,9 @@ func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update
 //DeleteByID method
 func (s *UserService) DeleteByID(ctx context.Context, userID string) error {
 	return s.repo.DeleteByID(ctx, userID)
+}
+
+// DeleteAll delete all
+func (s *UserService) DeleteAll(ctx context.Context) error {
+	return s.repo.DeleteAll(ctx)
 }

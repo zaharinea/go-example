@@ -6,20 +6,18 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/zaharinea/go-example/config"
 	_ "github.com/zaharinea/go-example/docs"
-	"github.com/zaharinea/go-example/pkg/repository"
 	"github.com/zaharinea/go-example/pkg/service"
 )
 
 // Handler struct
 type Handler struct {
 	config   *config.Config
-	repos    *repository.Repository
 	services *service.Service
 }
 
 // NewHandler returns a new Handler struct
-func NewHandler(config *config.Config, repos *repository.Repository, services *service.Service) *Handler {
-	return &Handler{config: config, repos: repos, services: services}
+func NewHandler(config *config.Config, services *service.Service) *Handler {
+	return &Handler{config: config, services: services}
 }
 
 // InitRoutes initialize endpoint
