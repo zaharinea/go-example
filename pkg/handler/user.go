@@ -198,6 +198,11 @@ func (h *Handler) DeleteUserByID(c *gin.Context) {
 	userID := c.Param("id")
 	err := h.services.User.DeleteByID(c, userID)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			newErrorResponse(c, http.StatusNotFound, err.Error())
+			return
+		}
+
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}

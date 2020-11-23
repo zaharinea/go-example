@@ -14,6 +14,7 @@ type IUserRepository interface {
 	Update(ctx context.Context, userID string, update UpdateUser) error
 	UpdateAndReturn(ctx context.Context, userID string, update UpdateUser) (User, error)
 	DeleteByID(ctx context.Context, userID string) error
+	DeleteAll(ctx context.Context) error
 }
 
 // Repository struct

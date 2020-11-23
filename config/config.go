@@ -105,5 +105,6 @@ func NewConfig() *Config {
 func NewTestingConfig() *Config {
 	config := NewConfig()
 	config.MongoDbName = getEnv("MONGO_DBNAME_TEST", fmt.Sprintf("%s_test", config.MongoDbName))
+	config.MongoMigrationsDir = "file://../../migrations"
 	return config
 }
