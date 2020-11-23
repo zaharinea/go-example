@@ -17,17 +17,17 @@ func NewUserService(repo repository.IUserRepository) *UserService {
 }
 
 //Create method
-func (s *UserService) Create(ctx context.Context, user *repository.User) (string, error) {
+func (s *UserService) Create(ctx context.Context, user *repository.User) error {
 	return s.repo.Create(ctx, user)
 }
 
 //List method
-func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]repository.User, error) {
+func (s *UserService) List(ctx context.Context, limit int64, offset int64) ([]*repository.User, error) {
 	return s.repo.List(ctx, limit, offset)
 }
 
 //GetByID method
-func (s *UserService) GetByID(ctx context.Context, userID string) (repository.User, error) {
+func (s *UserService) GetByID(ctx context.Context, userID string) (*repository.User, error) {
 	return s.repo.GetByID(ctx, userID)
 }
 
@@ -37,11 +37,16 @@ func (s *UserService) Update(ctx context.Context, userID string, update reposito
 }
 
 //UpdateAndReturn method
-func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (repository.User, error) {
+func (s *UserService) UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (*repository.User, error) {
 	return s.repo.UpdateAndReturn(ctx, userID, update)
 }
 
 //DeleteByID method
 func (s *UserService) DeleteByID(ctx context.Context, userID string) error {
 	return s.repo.DeleteByID(ctx, userID)
+}
+
+// DeleteAll delete all
+func (s *UserService) DeleteAll(ctx context.Context) error {
+	return s.repo.DeleteAll(ctx)
 }

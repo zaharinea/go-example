@@ -60,7 +60,7 @@ func NewApp(config *config.Config) *gin.Engine {
 	repository.ApplyDbMigrations(config, dbClient)
 	repos := repository.NewRepository(dbClient.Database(config.MongoDbName))
 	services := service.NewService(repos)
-	handlers := handler.NewHandler(config, repos, services)
+	handlers := handler.NewHandler(config, services)
 
 	app := gin.New()
 	app.Use(handler.SetRequestIDMiddleware())

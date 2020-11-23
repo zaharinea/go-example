@@ -43,7 +43,7 @@ type ResponseUsers struct {
 	Items []*ResponseUser `json:"items"`
 }
 
-func newResponseUser(user repository.User) *ResponseUser {
+func newResponseUser(user *repository.User) *ResponseUser {
 	return &ResponseUser{
 		ID:        user.ID.Hex(),
 		Name:      user.Name,
@@ -52,12 +52,12 @@ func newResponseUser(user repository.User) *ResponseUser {
 	}
 }
 
-func newResponseUsers(users []repository.User) ResponseUsers {
+func newResponseUsers(users []*repository.User) *ResponseUsers {
 	items := make([]*ResponseUser, len(users))
 	for idx, user := range users {
 		items[idx] = newResponseUser(user)
 	}
-	return ResponseUsers{Items: items}
+	return &ResponseUsers{Items: items}
 }
 
 // CreateUser handler
@@ -76,13 +76,13 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	}
 
 	newUser := repository.User{Name: req.Name}
-	_, err := h.services.User.Create(c, &newUser)
+	err := h.services.User.Create(c, &newUser)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, newResponseUser(newUser))
+	c.JSON(http.StatusCreated, newResponseUser(&newUser))
 }
 
 // ListUsers handler

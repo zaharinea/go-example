@@ -8,12 +8,13 @@ import (
 
 // IUserService interface
 type IUserService interface {
-	Create(ctx context.Context, user *repository.User) (string, error)
-	List(ctx context.Context, limit int64, offset int64) ([]repository.User, error)
-	GetByID(ctx context.Context, userID string) (repository.User, error)
+	Create(ctx context.Context, user *repository.User) error
+	List(ctx context.Context, limit int64, offset int64) ([]*repository.User, error)
+	GetByID(ctx context.Context, userID string) (*repository.User, error)
 	Update(ctx context.Context, userID string, update repository.UpdateUser) error
-	UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (repository.User, error)
+	UpdateAndReturn(ctx context.Context, userID string, update repository.UpdateUser) (*repository.User, error)
 	DeleteByID(ctx context.Context, userID string) error
+	DeleteAll(ctx context.Context) error
 }
 
 // Service struct
