@@ -88,7 +88,7 @@ func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return user, err
+		return user, mongo.ErrNoDocuments
 	}
 
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
@@ -102,7 +102,7 @@ func (r UserRepository) GetByID(ctx context.Context, userID string) (User, error
 func (r UserRepository) Update(ctx context.Context, userID string, updateUser UpdateUser) error {
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return err
+		return mongo.ErrNoDocuments
 	}
 	updateUser.UpdatedAt = time.Now()
 
@@ -119,7 +119,7 @@ func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, upda
 
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return user, err
+		return user, mongo.ErrNoDocuments
 	}
 	updateUser.UpdatedAt = time.Now()
 
@@ -138,9 +138,15 @@ func (r UserRepository) UpdateAndReturn(ctx context.Context, userID string, upda
 func (r UserRepository) DeleteByID(ctx context.Context, userID string) error {
 	objectID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		return err
+		return mongo.ErrNoDocuments
 	}
 
 	_, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
+	return err
+}
+
+// DeleteAll delete all
+func (r UserRepository) DeleteAll(ctx context.Context) error {
+	_, err := r.collection.DeleteMany(ctx, bson.M{})
 	return err
 }

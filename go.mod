@@ -19,4 +19,5 @@ require (
 	github.com/zsais/go-gin-prometheus v0.1.0
 	go.mongodb.org/mongo-driver v1.4.3
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/net v0.0.0-20201029221708-28c70e62bb1d
 )
