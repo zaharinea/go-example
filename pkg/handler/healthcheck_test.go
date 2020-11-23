@@ -25,5 +25,5 @@ func TestHealthcheck(t *testing.T) {
 	router.GET("/", handlers.Healthcheck)
 	w := performRequest(router, "GET", "/")
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, w.Body.String(), "{\"status\":\"ok\"}")
+	assert.Equal(t, "{\"status\":\"ok\"}", w.Body.String())
 }
