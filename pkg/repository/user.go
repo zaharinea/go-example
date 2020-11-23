@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -63,24 +62,29 @@ func (r *UserRepository) List(ctx context.Context, limit int64, offset int64) ([
 	if err != nil {
 		return results, err
 	}
-	defer func() {
-		if err := cur.Close(ctx); err != nil {
-			logrus.Errorf("Error close cursor: %v\n:", err)
-		}
-	}()
-
-	for cur.Next(ctx) {
-		var elem User
-		err := cur.Decode(&elem)
-		if err != nil {
-			return results, err
-		}
-		results = append(results, &elem)
-	}
-
-	if err := cur.Err(); err != nil {
+	err = cur.All(ctx, &results)
+	if err != nil {
 		return results, err
 	}
+
+	// defer func() {
+	// 	if err := cur.Close(ctx); err != nil {
+	// 		logrus.Errorf("Error close cursor: %v\n:", err)
+	// 	}
+	// }()
+
+	// for cur.Next(ctx) {
+	// 	var elem User
+	// 	err := cur.Decode(&elem)
+	// 	if err != nil {
+	// 		return results, err
+	// 	}
+	// 	results = append(results, &elem)
+	// }
+
+	// if err := cur.Err(); err != nil {
+	// 	return results, err
+	// }
 
 	return results, nil
 }
