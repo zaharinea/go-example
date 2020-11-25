@@ -1,9 +1,7 @@
 package app
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -64,19 +62,7 @@ func NewApp(config *config.Config) *gin.Engine {
 
 	app := gin.New()
 	app.Use(handler.SetRequestIDMiddleware())
-	app.Use(gin.LoggerWithConfig(
-		gin.LoggerConfig{
-			SkipPaths: []string{"/api/healthcheck", "/metrics"},
-			Formatter: func(param gin.LogFormatterParams) string {
-				return fmt.Sprintf("%v method: %s path: %s response_time: %v status: %d request_id: %s\n",
-					param.TimeStamp.Format(time.RFC3339),
-					param.Method,
-					param.Path,
-					param.Latency.Seconds(),
-					param.StatusCode,
-					param.Keys[handler.ContextRequestIDKey],
-				)
-			}}))
+	app.Use(handler.Logging())
 	app.Use(handler.Recovery(handler.RecoveryHandler))
 	app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 

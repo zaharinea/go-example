@@ -1,38 +1,56 @@
 package handler
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
 )
 
-//RequestIDHeaderName RequestID Header Name
-const RequestIDHeaderName = "X-Request-ID"
-
-//ContextRequestIDKey RequestID in Context
-const ContextRequestIDKey = "request_id"
+const (
+	requestIDHeaderName = "X-Request-ID"
+	contextRequestIDKey = "request_id"
+)
 
 //SetRequestIDMiddleware middleware for storing RequestID in Context
 func SetRequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		requestID := c.GetHeader(RequestIDHeaderName)
+		requestID := c.GetHeader(requestIDHeaderName)
 		if requestID == "" {
 			requestID = uuid.New().String()
 		}
 
-		c.Writer.Header().Set(RequestIDHeaderName, requestID)
-		c.Set(ContextRequestIDKey, requestID)
+		c.Writer.Header().Set(requestIDHeaderName, requestID)
+		c.Set(contextRequestIDKey, requestID)
 
 		// before request
 		c.Next()
 		// after request
 
 	}
+}
+
+// Logging middleware
+func Logging() gin.HandlerFunc {
+	return gin.LoggerWithConfig(
+		gin.LoggerConfig{
+			SkipPaths: []string{"/api/healthcheck", "/metrics"},
+			Formatter: func(param gin.LogFormatterParams) string {
+				return fmt.Sprintf("%v method: %s path: %s response_time: %.8f status: %d request_id: %s\n",
+					param.TimeStamp.Format(time.RFC3339),
+					param.Method,
+					param.Path,
+					param.Latency.Seconds(),
+					param.StatusCode,
+					param.Keys[contextRequestIDKey],
+				)
+			}})
 }
 
 // Recovery middleware
