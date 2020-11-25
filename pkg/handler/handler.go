@@ -9,6 +9,12 @@ import (
 	"github.com/zaharinea/go-example/pkg/service"
 )
 
+const (
+	errorMessageNotFound         = "Not found"
+	errorMessageMethodNotAllowed = "Method not allowed"
+	errorMessageServerError      = "Server error"
+)
+
 // Handler struct
 type Handler struct {
 	config   *config.Config
@@ -22,6 +28,9 @@ func NewHandler(config *config.Config, services *service.Service) *Handler {
 
 // InitRoutes initialize endpoint
 func (h *Handler) InitRoutes(app *gin.Engine) {
+	app.NoRoute(NoRouteHandler)
+	app.NoMethod(NoMethodHandler)
+
 	url := ginSwagger.URL("/swagger/doc.json")
 	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
 

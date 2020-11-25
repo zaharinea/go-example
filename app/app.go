@@ -77,7 +77,7 @@ func NewApp(config *config.Config) *gin.Engine {
 					param.Keys[handler.ContextRequestIDKey],
 				)
 			}}))
-	app.Use(gin.Recovery())
+	app.Use(handler.Recovery(handler.RecoveryHandler))
 	app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
 	InitPrometheus(app)

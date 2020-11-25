@@ -40,6 +40,7 @@ func (s *UsersSuite) SetupSuite() {
 	s.handlers = NewHandler(s.config, s.services)
 
 	s.router = gin.New()
+	s.router.Use(Recovery(RecoveryHandler))
 	s.handlers.InitRoutes(s.router)
 
 	s.user1 = repository.User{
