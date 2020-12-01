@@ -96,7 +96,7 @@ func NewExchange(name string, exchangeType string, arguments amqp.Table, queues 
 }
 
 func (e *Exchange) declareAndBind(channel *amqp.Channel) error {
-	if err := channel.ExchangeDeclare(e.Name, e.Type, e.Durable, e.AutoDelete, e.Internal, e.NoWait, nil); err != nil {
+	if err := channel.ExchangeDeclare(e.Name, e.Type, e.Durable, e.AutoDelete, e.Internal, e.NoWait, e.Arguments); err != nil {
 		return fmt.Errorf("Failed to declare an exchange %s: %s", e.Name, err)
 	}
 
