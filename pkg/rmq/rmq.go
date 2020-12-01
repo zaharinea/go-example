@@ -167,6 +167,9 @@ func (c *Consumer) Start() {
 
 //RegisterQueue register queue
 func (c *Consumer) RegisterQueue(queue *Queue) {
+	if _, exist := c.queues[queue.Name]; exist {
+		logrus.Fatalf("Queue already registred: %s", queue.Name)
+	}
 	c.queues[queue.Name] = queue
 }
 
@@ -174,6 +177,10 @@ func (c *Consumer) RegisterQueue(queue *Queue) {
 func (c *Consumer) RegisterExchange(exchange *Exchange) {
 	for _, queue := range exchange.Queues {
 		c.RegisterQueue(queue)
+	}
+
+	if _, exist := c.exchanges[exchange.Name]; exist {
+		logrus.Fatalf("Exchange already registred: %s", exchange.Name)
 	}
 	c.exchanges[exchange.Name] = exchange
 }

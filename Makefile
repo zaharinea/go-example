@@ -16,10 +16,10 @@ install-tools:
 	go get github.com/kisielk/errcheck
 
 swagger:
-	$(GOPATH)/bin/swag init
+	$(GOPATH)/bin/swag init -g cmd/server/main.go
 
 build: swagger
-	go build -o $(BINARY_NAME) main.go
+	go build -o $(BINARY_NAME) cmd/server/main.go
 
 run: build
 	./$(BINARY_NAME)
