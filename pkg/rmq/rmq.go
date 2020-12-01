@@ -22,10 +22,12 @@ type Queue struct {
 	prefetchCount int
 	handler       func(msg amqp.Delivery) bool
 	deliveries    <-chan amqp.Delivery
+	waitReconnect chan bool
 }
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
+	waitReconnect := make(chan bool)
 	return &Queue{
 		Name:          name,
 		RoutingKey:    routingKey,
@@ -36,6 +38,7 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 		Arguments:     arguments,
 		requeue:       true,
 		prefetchCount: 1,
+		waitReconnect: waitReconnect,
 	}
 }
 
@@ -162,6 +165,19 @@ func (c *Consumer) Start() {
 	}
 }
 
+//Close stop consumer
+func (c *Consumer) Close() error {
+	err := c.channel.Close()
+	if err != nil {
+		return err
+	}
+	err = c.conn.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 //RegisterQueue register queue
 func (c *Consumer) RegisterQueue(queue *Queue) {
 	if _, exist := c.queues[queue.Name]; exist {
@@ -253,6 +269,21 @@ func (c *Consumer) consume() error {
 		}
 		go c.consumeHandler(queue)
 	}
+
+	// reconnector
+	go func() {
+		for {
+			if err := <-c.err; err != nil {
+				logrus.Info("Start reconnect")
+				if err := c.reconnect(); err != nil {
+					logrus.Errorf("Failed reconnect: %s", err)
+				}
+			}
+			for _, queue := range c.queues {
+				queue.waitReconnect <- true
+			}
+		}
+	}()
 	return nil
 }
 
@@ -274,26 +305,19 @@ func (c *Consumer) consumeHandler(queue *Queue) {
 	for {
 		logrus.Infof("Start process events: queue=%s", queue.Name)
 
-		go func() {
-			for delivery := range queue.deliveries {
-				if queue.handler(delivery) {
-					if err := delivery.Ack(false); err != nil {
-						logrus.Errorf("Falied ack %s", queue.Name)
-					}
-				} else {
-					if err := delivery.Nack(false, queue.requeue); err != nil {
-						logrus.Errorf("Falied nack %s", queue.Name)
-					}
+		for delivery := range queue.deliveries {
+			if queue.handler(delivery) {
+				if err := delivery.Ack(false); err != nil {
+					logrus.Errorf("Falied ack %s", queue.Name)
+				}
+			} else {
+				if err := delivery.Nack(false, queue.requeue); err != nil {
+					logrus.Errorf("Falied nack %s", queue.Name)
 				}
 			}
-			logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
-		}()
-
-		if err := <-c.err; err != nil {
-			logrus.Info("Start reconnect")
-			if err := c.reconnect(); err != nil {
-				logrus.Errorf("Failed reconnect: %s", err)
-			}
 		}
+		logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
+
+		<-queue.waitReconnect
 	}
 }
