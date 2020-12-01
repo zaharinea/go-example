@@ -9,6 +9,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Queue struct
 type Queue struct {
 	Name          string
 	RoutingKey    string
@@ -22,6 +23,7 @@ type Queue struct {
 	handlers      []func(msg amqp.Delivery) bool
 }
 
+// NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 	handlers := []func(msg amqp.Delivery) bool{}
 	return &Queue{
@@ -38,6 +40,7 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 	}
 }
 
+// RegisterHandler register handler in Queue
 func (q *Queue) RegisterHandler(handler func(msg amqp.Delivery) bool) {
 	q.handlers = append(q.handlers, handler)
 }
@@ -71,6 +74,7 @@ func (q *Queue) consume(channel *amqp.Channel) (<-chan amqp.Delivery, error) {
 	return deliveries, nil
 }
 
+// Exchange struct
 type Exchange struct {
 	Name       string
 	Type       string
@@ -82,6 +86,7 @@ type Exchange struct {
 	Queues     []*Queue
 }
 
+// NewExchange returns a new Exchange struct
 func NewExchange(name string, exchangeType string, arguments amqp.Table, queues []*Queue) *Exchange {
 	return &Exchange{
 		Name:       name,
@@ -108,6 +113,7 @@ func (e *Exchange) declareAndBind(channel *amqp.Channel) error {
 	return nil
 }
 
+// Consumer struct
 type Consumer struct {
 	uri              string
 	conn             *amqp.Connection
@@ -119,6 +125,7 @@ type Consumer struct {
 	reconnectTimeout time.Duration
 }
 
+// NewConsumer returns a new Consumer struct
 func NewConsumer(uri string) *Consumer {
 	exchanges := make(map[string]*Exchange)
 	queues := make(map[string]*Queue)
@@ -127,7 +134,11 @@ func NewConsumer(uri string) *Consumer {
 	return &Consumer{uri: uri, exchanges: exchanges, queues: queues, deliveries: deliveries, err: err, reconnectTimeout: time.Second * 3}
 }
 
+//Start start consumer
 func (c *Consumer) Start() {
+	logrus.Infof("exchanges: %v", c.exchanges)
+	logrus.Infof("queues: %v", c.queues)
+
 	err := c.connect()
 	if err != nil {
 		logrus.Fatal("Failed connect", err)
@@ -154,10 +165,12 @@ func (c *Consumer) Start() {
 	}
 }
 
+//RegisterQueue register queue
 func (c *Consumer) RegisterQueue(queue *Queue) {
 	c.queues[queue.Name] = queue
 }
 
+//RegisterExchange register exchange
 func (c *Consumer) RegisterExchange(exchange *Exchange) {
 	for _, queue := range exchange.Queues {
 		c.RegisterQueue(queue)
@@ -224,7 +237,9 @@ func (c *Consumer) setupQueues() error {
 
 func (c *Consumer) setupConsumers() error {
 	for _, queue := range c.queues {
-		c.consume(queue)
+		if err := c.consume(queue); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -235,14 +250,18 @@ func (c *Consumer) consume(queue *Queue) error {
 		if err != nil {
 			return err
 		}
-		go func() {
+		go func(handler func(msg amqp.Delivery) bool) {
 			for {
 				go func() {
 					for delivery := range deliveries {
 						if handler(delivery) {
-							delivery.Ack(false)
+							if err := delivery.Ack(false); err != nil {
+								logrus.Errorf("Falied ack %s", queue.Name)
+							}
 						} else {
-							delivery.Nack(false, queue.requeue)
+							if err := delivery.Nack(false, queue.requeue); err != nil {
+								logrus.Errorf("Falied nack %s", queue.Name)
+							}
 						}
 					}
 					logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
@@ -250,14 +269,16 @@ func (c *Consumer) consume(queue *Queue) error {
 				}()
 
 				if err := <-c.err; err != nil {
-					c.reconnect()
+					if err := c.reconnect(); err != nil {
+						logrus.Errorf("Failed consume after reconnect: queue=%s", queue.Name)
+					}
 					deliveries, err = queue.consume(c.channel)
 					if err != nil {
 						logrus.Errorf("Failed consume after reconnect: queue=%s", queue.Name)
 					}
 				}
 			}
-		}()
+		}(handler)
 	}
 	return nil
 }
