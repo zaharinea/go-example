@@ -17,6 +17,7 @@ type Config struct {
 	AppHost            string
 	AppPort            string
 	AppAddr            string
+	RmqURI             string
 	MongoURI           string
 	MongoDbName        string
 	MongoMigrationsDir string
@@ -91,6 +92,7 @@ func NewConfig() *Config {
 		AppHost:            appHost,
 		AppPort:            appPort,
 		AppAddr:            net.JoinHostPort(appHost, appPort),
+		RmqURI:             getRequiredEnv("RMQ_URI"),
 		MongoURI:           getRequiredEnv("MONGODB_CONNECTION_STRING"),
 		MongoDbName:        getRequiredEnv("MONGO_DBNAME"),
 		MongoMigrationsDir: "file://migrations",

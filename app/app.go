@@ -10,6 +10,7 @@ import (
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/handler"
 	"github.com/zaharinea/go-example/pkg/repository"
+	"github.com/zaharinea/go-example/pkg/rmq"
 	"github.com/zaharinea/go-example/pkg/service"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
@@ -59,6 +60,11 @@ func NewApp(config *config.Config) *gin.Engine {
 	repos := repository.NewRepository(dbClient.Database(config.MongoDbName))
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
+
+	consumer := rmq.NewConsumer(config.RmqURI)
+	rmqHandlers := rmq.NewRmqHandler(config, services)
+	rmqHandlers.SetupExchangesAndQueues(consumer)
+	consumer.Start()
 
 	app := gin.New()
 	app.Use(handler.SetRequestIDMiddleware())
