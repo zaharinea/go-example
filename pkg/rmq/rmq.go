@@ -136,9 +136,6 @@ func NewConsumer(uri string) *Consumer {
 
 //Start start consumer
 func (c *Consumer) Start() {
-	logrus.Infof("exchanges: %v", c.exchanges)
-	logrus.Infof("queues: %v", c.queues)
-
 	err := c.connect()
 	if err != nil {
 		logrus.Fatal("Failed connect", err)
@@ -201,12 +198,14 @@ func (c *Consumer) RegisterExchange(exchange *Exchange) {
 func (c *Consumer) connect() error {
 	var err error
 	for {
+		logrus.Info("Start connect to rabbitmq")
 		c.conn, err = amqp.Dial(c.uri)
 		if err == nil {
 			go func() {
 				<-c.conn.NotifyClose(make(chan *amqp.Error))
 				c.err <- errors.New("Connection Closed")
 			}()
+			logrus.Info("Success connect to rabbitmq")
 			return nil
 		}
 		logrus.Errorf("Failed connect to rabbitmq: %s", err.Error())
@@ -232,33 +231,40 @@ func (c *Consumer) reconnect() error {
 }
 
 func (c *Consumer) setupChanels() error {
+	logrus.Debug("Start setup chanels to rabbitmq")
 	var err error
 	c.channel, err = c.conn.Channel()
 	if err != nil {
 		return fmt.Errorf("Channel: %s", err)
 	}
+	logrus.Debug("Success setup chanels to rabbitmq")
 	return nil
 }
 
 func (c *Consumer) setupExchanges() error {
+	logrus.Debug("Start setup exchanges in rabbitmq")
 	for _, exchange := range c.exchanges {
 		if err := exchange.declareAndBind(c.channel); err != nil {
 			return err
 		}
 	}
+	logrus.Debug("Success setup exchanges in rabbitmq")
 	return nil
 }
 
 func (c *Consumer) setupQueues() error {
+	logrus.Debug("Start setup queues in rabbitmq")
 	for _, queue := range c.queues {
 		if err := queue.declare(c.channel); err != nil {
 			return err
 		}
 	}
+	logrus.Debug("Success setup queues in rabbitmq")
 	return nil
 }
 
 func (c *Consumer) consume() error {
+	logrus.Debug("Start consume queues")
 	for _, queue := range c.queues {
 		if queue.handler == nil {
 			continue
@@ -274,9 +280,8 @@ func (c *Consumer) consume() error {
 	go func() {
 		for {
 			if err := <-c.err; err != nil {
-				logrus.Info("Start reconnect")
 				if err := c.reconnect(); err != nil {
-					logrus.Errorf("Failed reconnect: %s", err)
+					logrus.Errorf("Failed reconnect to rabbitmq: %s", err)
 				}
 			}
 			for _, queue := range c.queues {
@@ -288,6 +293,7 @@ func (c *Consumer) consume() error {
 }
 
 func (c *Consumer) reconsume() error {
+	logrus.Debug("Start reconsume queues")
 	for _, queue := range c.queues {
 		if queue.handler == nil {
 			continue
@@ -296,14 +302,14 @@ func (c *Consumer) reconsume() error {
 		if err := queue.consume(c.channel); err != nil {
 			return fmt.Errorf("Failed reconsume queue=%s after reconnect: %s", queue.Name, err)
 		}
-		logrus.Infof("Success reconsume queue=%s after reconnect", queue.Name)
+		logrus.Debugf("Success reconsume queue=%s after reconnect", queue.Name)
 	}
 	return nil
 }
 
 func (c *Consumer) consumeHandler(queue *Queue) {
 	for {
-		logrus.Infof("Start process events: queue=%s", queue.Name)
+		logrus.Debugf("Start process events: queue=%s", queue.Name)
 
 		for delivery := range queue.deliveries {
 			if queue.handler(delivery) {
@@ -316,8 +322,7 @@ func (c *Consumer) consumeHandler(queue *Queue) {
 				}
 			}
 		}
-		logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
-
+		logrus.Errorf("Rabbit consumer closed, wait reconnect: queue=%s", queue.Name)
 		<-queue.waitReconnect
 	}
 }
