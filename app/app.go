@@ -31,7 +31,7 @@ func InitLogger(config *config.Config) {
 }
 
 // InitPrometheus initialize prometheus
-func InitPrometheus(app *gin.Engine) {
+func InitPrometheus(engine *gin.Engine) {
 	p := ginprometheus.NewPrometheus("gin")
 	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
 		url := c.Request.URL.Path
@@ -43,11 +43,17 @@ func InitPrometheus(app *gin.Engine) {
 		}
 		return url
 	}
-	p.Use(app)
+	p.Use(engine)
 }
 
-// NewApp return new gin
-func NewApp(config *config.Config) *gin.Engine {
+// App struct
+type App struct {
+	Engine      *gin.Engine
+	RmqConsumer *rmq.Consumer
+}
+
+// NewApp return new gin engine
+func NewApp(config *config.Config) *App {
 	InitLogger(config)
 
 	err := sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN, Release: config.AppVersion})
@@ -61,19 +67,18 @@ func NewApp(config *config.Config) *gin.Engine {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	consumer := rmq.NewConsumer(config.RmqURI)
+	rmqConsumer := rmq.NewConsumer(config.RmqURI)
 	rmqHandlers := rmq.NewRmqHandler(config, services)
-	rmqHandlers.SetupExchangesAndQueues(consumer)
-	consumer.Start()
+	rmqHandlers.SetupExchangesAndQueues(rmqConsumer)
 
-	app := gin.New()
-	app.Use(handler.SetRequestIDMiddleware())
-	app.Use(handler.Logging())
-	app.Use(handler.Recovery(handler.RecoveryHandler))
-	app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
+	engine := gin.New()
+	engine.Use(handler.SetRequestIDMiddleware())
+	engine.Use(handler.Logging())
+	engine.Use(handler.Recovery(handler.RecoveryHandler))
+	engine.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
-	InitPrometheus(app)
-	handlers.InitRoutes(app)
+	InitPrometheus(engine)
+	handlers.InitRoutes(engine)
 
-	return app
+	return &App{Engine: engine, RmqConsumer: rmqConsumer}
 }

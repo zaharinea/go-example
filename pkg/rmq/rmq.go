@@ -23,11 +23,13 @@ type Queue struct {
 	handler       func(msg amqp.Delivery) bool
 	deliveries    <-chan amqp.Delivery
 	waitReconnect chan bool
+	quit          chan bool
 }
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 	waitReconnect := make(chan bool)
+	quit := make(chan bool)
 	return &Queue{
 		Name:          name,
 		RoutingKey:    routingKey,
@@ -39,6 +41,7 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 		requeue:       true,
 		prefetchCount: 1,
 		waitReconnect: waitReconnect,
+		quit:          quit,
 	}
 }
 
@@ -123,6 +126,7 @@ type Consumer struct {
 	queues           map[string]*Queue
 	exchanges        map[string]*Exchange
 	err              chan error
+	quit             chan bool
 	reconnectTimeout time.Duration
 }
 
@@ -131,7 +135,15 @@ func NewConsumer(uri string) *Consumer {
 	exchanges := make(map[string]*Exchange)
 	queues := make(map[string]*Queue)
 	err := make(chan error)
-	return &Consumer{uri: uri, exchanges: exchanges, queues: queues, err: err, reconnectTimeout: time.Second * 3}
+	quit := make(chan bool)
+	return &Consumer{
+		uri:              uri,
+		exchanges:        exchanges,
+		queues:           queues,
+		err:              err,
+		quit:             quit,
+		reconnectTimeout: time.Second * 3,
+	}
 }
 
 //Start start consumer
@@ -164,6 +176,8 @@ func (c *Consumer) Start() {
 
 //Close stop consumer
 func (c *Consumer) Close() error {
+	c.quit <- true
+
 	err := c.channel.Close()
 	if err != nil {
 		return err
@@ -172,6 +186,7 @@ func (c *Consumer) Close() error {
 	if err != nil {
 		return err
 	}
+	logrus.Info("Closing rabbitmq channels and connection")
 	return nil
 }
 
@@ -263,6 +278,18 @@ func (c *Consumer) setupQueues() error {
 	return nil
 }
 
+func (c *Consumer) notifyQueuesReconnect() {
+	for _, queue := range c.queues {
+		queue.waitReconnect <- true
+	}
+}
+
+func (c *Consumer) notifyQueuesQuit() {
+	for _, queue := range c.queues {
+		queue.quit <- true
+	}
+}
+
 func (c *Consumer) consume() error {
 	logrus.Debug("Start consume queues")
 	for _, queue := range c.queues {
@@ -276,17 +303,22 @@ func (c *Consumer) consume() error {
 		go c.consumeHandler(queue)
 	}
 
-	// reconnector
+	// watcher for reconnect and shutdown
 	go func() {
 		for {
-			if err := <-c.err; err != nil {
-				if err := c.reconnect(); err != nil {
-					logrus.Errorf("Failed reconnect to rabbitmq: %s", err)
+			select {
+			case <-c.quit:
+				c.notifyQueuesQuit()
+				return
+			case err := <-c.err:
+				if err != nil {
+					if err := c.reconnect(); err != nil {
+						logrus.Errorf("Failed reconnect to rabbitmq: %s", err)
+					}
+					c.notifyQueuesReconnect()
 				}
 			}
-			for _, queue := range c.queues {
-				queue.waitReconnect <- true
-			}
+
 		}
 	}()
 	return nil
@@ -322,7 +354,12 @@ func (c *Consumer) consumeHandler(queue *Queue) {
 				}
 			}
 		}
-		logrus.Errorf("Rabbit consumer closed, wait reconnect: queue=%s", queue.Name)
-		<-queue.waitReconnect
+
+		select {
+		case <-c.quit:
+			return
+		case <-queue.waitReconnect:
+			logrus.Errorf("Rabbit consumer closed, wait reconnect: queue=%s", queue.Name)
+		}
 	}
 }
