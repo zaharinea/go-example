@@ -23,12 +23,12 @@ func NewRmqHandler(config *config.Config, services *service.Service) *RmqHandler
 // SetupExchangesAndQueues setup Exchanges and Queues
 func (h *RmqHandler) SetupExchangesAndQueues(consumer *Consumer) {
 	companyQueque := NewQueue("go-example-companies", "events.companies", amqp.Table{})
-	companyQueque.RegisterHandler(h.HandlerCompanyEvent)
+	companyQueque.SetHandler(h.HandlerCompanyEvent)
 	companyExchange := NewExchange("events.companies", "fanout", amqp.Table{}, []*Queue{companyQueque})
 	consumer.RegisterExchange(companyExchange)
 
 	accountQueque := NewQueue("go-example-accounts", "events.accounts", amqp.Table{})
-	accountQueque.RegisterHandler(h.HandlerAccountEvent)
+	accountQueque.SetHandler(h.HandlerAccountEvent)
 	consumer.RegisterQueue(accountQueque)
 }
 

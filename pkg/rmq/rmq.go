@@ -20,12 +20,12 @@ type Queue struct {
 	Arguments     amqp.Table
 	requeue       bool
 	prefetchCount int
-	handlers      []func(msg amqp.Delivery) bool
+	handler       func(msg amqp.Delivery) bool
+	deliveries    <-chan amqp.Delivery
 }
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
-	handlers := []func(msg amqp.Delivery) bool{}
 	return &Queue{
 		Name:          name,
 		RoutingKey:    routingKey,
@@ -36,13 +36,12 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 		Arguments:     arguments,
 		requeue:       true,
 		prefetchCount: 1,
-		handlers:      handlers,
 	}
 }
 
-// RegisterHandler register handler in Queue
-func (q *Queue) RegisterHandler(handler func(msg amqp.Delivery) bool) {
-	q.handlers = append(q.handlers, handler)
+// SetHandler register handler in Queue
+func (q *Queue) SetHandler(handler func(msg amqp.Delivery) bool) {
+	q.handler = handler
 }
 
 func (q *Queue) declare(channel *amqp.Channel) error {
@@ -53,13 +52,13 @@ func (q *Queue) declare(channel *amqp.Channel) error {
 	return nil
 }
 
-func (q *Queue) consume(channel *amqp.Channel) (<-chan amqp.Delivery, error) {
+func (q *Queue) consume(channel *amqp.Channel) error {
 	err := channel.Qos(q.prefetchCount, 0, false)
 	if err != nil {
-		return nil, fmt.Errorf("Error setting qos: %s", err)
+		return fmt.Errorf("Error setting qos: %s", err)
 	}
 
-	deliveries, err := channel.Consume(
+	q.deliveries, err = channel.Consume(
 		q.Name, // queue
 		"",     // consumer
 		false,  // auto-ack
@@ -69,9 +68,9 @@ func (q *Queue) consume(channel *amqp.Channel) (<-chan amqp.Delivery, error) {
 		nil,    // args
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Queue Consume: %s", err)
+		return fmt.Errorf("Queue Consume: %s", err)
 	}
-	return deliveries, nil
+	return nil
 }
 
 // Exchange struct
@@ -120,7 +119,6 @@ type Consumer struct {
 	channel          *amqp.Channel
 	queues           map[string]*Queue
 	exchanges        map[string]*Exchange
-	deliveries       map[string]<-chan amqp.Delivery
 	err              chan error
 	reconnectTimeout time.Duration
 }
@@ -129,9 +127,8 @@ type Consumer struct {
 func NewConsumer(uri string) *Consumer {
 	exchanges := make(map[string]*Exchange)
 	queues := make(map[string]*Queue)
-	deliveries := make(map[string]<-chan amqp.Delivery)
 	err := make(chan error)
-	return &Consumer{uri: uri, exchanges: exchanges, queues: queues, deliveries: deliveries, err: err, reconnectTimeout: time.Second * 3}
+	return &Consumer{uri: uri, exchanges: exchanges, queues: queues, err: err, reconnectTimeout: time.Second * 3}
 }
 
 //Start start consumer
@@ -159,7 +156,7 @@ func (c *Consumer) Start() {
 		logrus.Fatal("Failed setup exchanges", err)
 	}
 
-	err = c.setupConsumers()
+	err = c.consume()
 	if err != nil {
 		logrus.Fatal("Failed setup consumers", err)
 	}
@@ -212,6 +209,9 @@ func (c *Consumer) reconnect() error {
 	if err := c.setupQueues(); err != nil {
 		return err
 	}
+	if err := c.reconsume(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -242,50 +242,58 @@ func (c *Consumer) setupQueues() error {
 	return nil
 }
 
-func (c *Consumer) setupConsumers() error {
+func (c *Consumer) consume() error {
 	for _, queue := range c.queues {
-		if err := c.consume(queue); err != nil {
+		if queue.handler == nil {
+			continue
+		}
+
+		if err := queue.consume(c.channel); err != nil {
 			return err
 		}
+		go c.consumeHandler(queue)
 	}
 	return nil
 }
 
-func (c *Consumer) consume(queue *Queue) error {
-	for _, handler := range queue.handlers {
-		deliveries, err := queue.consume(c.channel)
-		if err != nil {
-			return err
+func (c *Consumer) reconsume() error {
+	for _, queue := range c.queues {
+		if queue.handler == nil {
+			continue
 		}
-		go func(handler func(msg amqp.Delivery) bool) {
-			for {
-				go func() {
-					for delivery := range deliveries {
-						if handler(delivery) {
-							if err := delivery.Ack(false); err != nil {
-								logrus.Errorf("Falied ack %s", queue.Name)
-							}
-						} else {
-							if err := delivery.Nack(false, queue.requeue); err != nil {
-								logrus.Errorf("Falied nack %s", queue.Name)
-							}
-						}
-					}
-					logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
 
-				}()
+		if err := queue.consume(c.channel); err != nil {
+			return fmt.Errorf("Failed reconsume queue=%s after reconnect: %s", queue.Name, err)
+		}
+		logrus.Infof("Success reconsume queue=%s after reconnect", queue.Name)
+	}
+	return nil
+}
 
-				if err := <-c.err; err != nil {
-					if err := c.reconnect(); err != nil {
-						logrus.Errorf("Failed consume after reconnect: queue=%s", queue.Name)
+func (c *Consumer) consumeHandler(queue *Queue) {
+	for {
+		logrus.Infof("Start process events: queue=%s", queue.Name)
+
+		go func() {
+			for delivery := range queue.deliveries {
+				if queue.handler(delivery) {
+					if err := delivery.Ack(false); err != nil {
+						logrus.Errorf("Falied ack %s", queue.Name)
 					}
-					deliveries, err = queue.consume(c.channel)
-					if err != nil {
-						logrus.Errorf("Failed consume after reconnect: queue=%s", queue.Name)
+				} else {
+					if err := delivery.Nack(false, queue.requeue); err != nil {
+						logrus.Errorf("Falied nack %s", queue.Name)
 					}
 				}
 			}
-		}(handler)
+			logrus.Errorf("Rabbit consumer closed: queue=%s", queue.Name)
+		}()
+
+		if err := <-c.err; err != nil {
+			logrus.Info("Start reconnect")
+			if err := c.reconnect(); err != nil {
+				logrus.Errorf("Failed reconnect: %s", err)
+			}
+		}
 	}
-	return nil
 }
