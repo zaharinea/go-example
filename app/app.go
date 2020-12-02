@@ -16,10 +16,14 @@ import (
 )
 
 // InitLogger initialize logger
-func InitLogger(config *config.Config) {
+func InitLogger(config *config.Config) *logrus.Logger {
+	logger := logrus.New()
+
 	if strings.ToUpper(config.LogFormat) == "JSON" {
+		logger.SetFormatter(&logrus.JSONFormatter{})
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	} else {
+		logger.SetFormatter(&logrus.TextFormatter{})
 		logrus.SetFormatter(&logrus.TextFormatter{})
 	}
 
@@ -28,6 +32,9 @@ func InitLogger(config *config.Config) {
 		level = logrus.InfoLevel
 	}
 	logrus.SetLevel(level)
+	logger.SetLevel(level)
+
+	return logger
 }
 
 // InitPrometheus initialize prometheus
@@ -54,7 +61,7 @@ type App struct {
 
 // NewApp return new gin engine
 func NewApp(config *config.Config) *App {
-	InitLogger(config)
+	logger := InitLogger(config)
 
 	err := sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN, Release: config.AppVersion})
 	if err != nil {
@@ -67,9 +74,9 @@ func NewApp(config *config.Config) *App {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	rmqConsumer := rmq.NewConsumer(config.RmqURI)
+	rmqConsumer := rmq.NewConsumer(config.RmqURI, logger)
 	rmqHandlers := rmq.NewRmqHandler(config, services)
-	rmqHandlers.SetupExchangesAndQueues(rmqConsumer)
+	rmq.SetupExchangesAndQueues(rmqConsumer, rmqHandlers)
 
 	engine := gin.New()
 	engine.Use(handler.SetRequestIDMiddleware())
