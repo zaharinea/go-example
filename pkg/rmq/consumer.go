@@ -10,42 +10,41 @@ import (
 
 // Queue struct
 type Queue struct {
-	Name          string
-	RoutingKey    string
-	Durable       bool
-	AutoDelete    bool
-	Exclusive     bool
-	NoWait        bool
-	Arguments     amqp.Table
-	requeue       bool
-	prefetchCount int
-	workers       int
-	handler       func(msg amqp.Delivery) bool
-	deliveries    <-chan amqp.Delivery
-	waitReconnect chan bool
-	quit          chan bool
+	Name              string
+	RoutingKey        string
+	Durable           bool
+	AutoDelete        bool
+	Exclusive         bool
+	NoWait            bool
+	Arguments         amqp.Table
+	requeue           bool
+	prefetchCount     int
+	handler           func(msg amqp.Delivery) bool
+	deliveries        chan amqp.Delivery
+	countWorkers      int
+	quitWorkerChanels []chan bool
 }
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
-	prefetchCount := 4
+	prefetchCount := 2
 	multiplier := 1
-	workers := prefetchCount * multiplier
-	waitReconnect := make(chan bool, workers)
-	quit := make(chan bool)
+	countWorkers := prefetchCount * multiplier
+	quitWorkerChanels := []chan bool{}
+	deliveries := make(chan amqp.Delivery)
 	return &Queue{
-		Name:          name,
-		RoutingKey:    routingKey,
-		Durable:       true,
-		AutoDelete:    false,
-		Exclusive:     false,
-		NoWait:        false,
-		Arguments:     arguments,
-		requeue:       true,
-		prefetchCount: prefetchCount,
-		workers:       workers,
-		waitReconnect: waitReconnect,
-		quit:          quit,
+		Name:              name,
+		RoutingKey:        routingKey,
+		Durable:           true,
+		AutoDelete:        false,
+		Exclusive:         false,
+		NoWait:            false,
+		Arguments:         arguments,
+		requeue:           true,
+		prefetchCount:     prefetchCount,
+		deliveries:        deliveries,
+		countWorkers:      countWorkers,
+		quitWorkerChanels: quitWorkerChanels,
 	}
 }
 
@@ -68,7 +67,7 @@ func (q *Queue) consume(channel *amqp.Channel) error {
 		return fmt.Errorf("Error setting qos: %s", err)
 	}
 
-	q.deliveries, err = channel.Consume(
+	deliveries, err := channel.Consume(
 		q.Name, // queue
 		"",     // consumer
 		false,  // auto-ack
@@ -80,6 +79,13 @@ func (q *Queue) consume(channel *amqp.Channel) error {
 	if err != nil {
 		return fmt.Errorf("Queue Consume: %s", err)
 	}
+
+	go func() {
+		for delivery := range deliveries {
+			q.deliveries <- delivery
+		}
+	}()
+
 	return nil
 }
 
@@ -142,7 +148,7 @@ type Consumer struct {
 	queues           map[string]*Queue
 	exchanges        map[string]*Exchange
 	err              chan error
-	quit             chan bool
+	quitReconnector  chan bool
 	reconnectTimeout time.Duration
 	logger           Logger
 }
@@ -152,13 +158,13 @@ func NewConsumer(uri string, logger Logger) *Consumer {
 	exchanges := make(map[string]*Exchange)
 	queues := make(map[string]*Queue)
 	err := make(chan error)
-	quit := make(chan bool)
+	quitReconnector := make(chan bool)
 	return &Consumer{
 		uri:              uri,
 		exchanges:        exchanges,
 		queues:           queues,
 		err:              err,
-		quit:             quit,
+		quitReconnector:  quitReconnector,
 		reconnectTimeout: time.Second * 3,
 		logger:           logger,
 	}
@@ -192,9 +198,27 @@ func (c *Consumer) Start() {
 	}
 }
 
+func (c *Consumer) notifyWorkersQuit() {
+	for _, queue := range c.queues {
+		if queue.handler == nil {
+			continue
+		}
+
+		for _, ch := range queue.quitWorkerChanels {
+			ch <- true
+		}
+
+	}
+}
+
+func (c *Consumer) notifyReconnectorQuit() {
+	c.quitReconnector <- true
+}
+
 //Close stop consumer
 func (c *Consumer) Close() error {
-	c.quit <- true
+	c.notifyReconnectorQuit()
+	c.notifyWorkersQuit()
 
 	err := c.channel.Close()
 	if err != nil {
@@ -293,23 +317,6 @@ func (c *Consumer) setupQueues() error {
 	return nil
 }
 
-func (c *Consumer) notifyQueuesReconnect() {
-	for _, queue := range c.queues {
-		if queue.handler == nil {
-			continue
-		}
-		for i := 0; i < queue.workers; i++ {
-			queue.waitReconnect <- true
-		}
-	}
-}
-
-func (c *Consumer) notifyQueuesQuit() {
-	for _, queue := range c.queues {
-		queue.quit <- true
-	}
-}
-
 func (c *Consumer) consume() error {
 	c.logger.Debug("Start consume queues")
 	for _, queue := range c.queues {
@@ -320,24 +327,25 @@ func (c *Consumer) consume() error {
 		if err := queue.consume(c.channel); err != nil {
 			return err
 		}
-		for i := 0; i < queue.workers; i++ {
+		for i := 0; i < queue.countWorkers; i++ {
+			quit := make(chan bool)
+			queue.quitWorkerChanels = append(queue.quitWorkerChanels, quit)
 			go c.consumeHandler(queue, i)
 		}
 	}
 
-	// watcher for reconnect and shutdown
+	// watcher for reconnect
 	go func() {
 		for {
 			select {
-			case <-c.quit:
-				c.notifyQueuesQuit()
+			case <-c.quitReconnector:
+				c.logger.Debugf("Stopped watcher for reconnect")
 				return
 			case err := <-c.err:
 				if err != nil {
 					if err := c.reconnect(); err != nil {
 						c.logger.Errorf("Failed reconnect to rabbitmq: %s", err)
 					}
-					c.notifyQueuesReconnect()
 				}
 			}
 
@@ -362,10 +370,10 @@ func (c *Consumer) reconsume() error {
 }
 
 func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
+	c.logger.Debugf("Start process events: queue=%s, worker=%d", queue.Name, workerNumber)
 	for {
-		c.logger.Debugf("Start process events: queue=%s, worker=%d", queue.Name, workerNumber)
-
-		for delivery := range queue.deliveries {
+		select {
+		case delivery := <-queue.deliveries:
 			c.logger.Debugf("Got event: queue=%s, worker=%d", queue.Name, workerNumber)
 			if queue.handler(delivery) {
 				if err := delivery.Ack(false); err != nil {
@@ -376,14 +384,9 @@ func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 					c.logger.Errorf("Falied nack %s", queue.Name)
 				}
 			}
-		}
-
-		select {
-		case <-c.quit:
+		case <-queue.quitWorkerChanels[workerNumber]:
 			c.logger.Debugf("Stop process events: queue=%s, worker=%d", queue.Name, workerNumber)
 			return
-		case <-queue.waitReconnect:
-			c.logger.Errorf("Rabbit consumer closed, wait reconnect: queue=%s", queue.Name)
 		}
 	}
 }
