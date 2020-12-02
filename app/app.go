@@ -75,7 +75,7 @@ func NewApp(config *config.Config) *App {
 	handlers := handler.NewHandler(config, services)
 
 	rmqConsumer := rmq.NewConsumer(config.RmqURI, logger)
-	rmqHandlers := rmq.NewRmqHandler(config, services)
+	rmqHandlers := rmq.NewHandler(config, services)
 	rmq.SetupExchangesAndQueues(rmqConsumer, rmqHandlers)
 
 	engine := gin.New()

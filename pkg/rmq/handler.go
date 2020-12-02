@@ -9,31 +9,31 @@ import (
 	"github.com/zaharinea/go-example/pkg/service"
 )
 
-// RmqHandler struct
-type RmqHandler struct {
+// Handler struct
+type Handler struct {
 	config   *config.Config
 	services *service.Service
 }
 
-// NewRmqHandler returns a new RmqHandler struct
-func NewRmqHandler(config *config.Config, services *service.Service) *RmqHandler {
-	return &RmqHandler{config: config, services: services}
+// NewHandler returns a new RmqHandler struct
+func NewHandler(config *config.Config, services *service.Service) *Handler {
+	return &Handler{config: config, services: services}
 }
 
 // SetupExchangesAndQueues setup Exchanges and Queues
-func SetupExchangesAndQueues(consumer *Consumer, h *RmqHandler) {
+func SetupExchangesAndQueues(consumer *Consumer, h *Handler) {
 	companyQueque := NewQueue("go-example-companies", "events.companies", amqp.Table{})
 	companyQueque.SetHandler(h.HandlerCompanyEvent)
 	companyExchange := NewExchange("events.companies", "fanout", amqp.Table{}, []*Queue{companyQueque})
 	consumer.RegisterExchange(companyExchange)
 
-	accountQueque := NewQueue("go-example-accounts", "events.accounts", amqp.Table{})
+	accountQueque := NewQueue("go-example-accounts", "", amqp.Table{})
 	accountQueque.SetHandler(h.HandlerAccountEvent)
 	consumer.RegisterQueue(accountQueque)
 }
 
 // HandlerCompanyEvent handler for company events
-func (h *RmqHandler) HandlerCompanyEvent(msg amqp.Delivery) bool {
+func (h *Handler) HandlerCompanyEvent(msg amqp.Delivery) bool {
 	if msg.Body == nil {
 		logrus.Warning("Error, no message body!")
 		return false
@@ -43,7 +43,7 @@ func (h *RmqHandler) HandlerCompanyEvent(msg amqp.Delivery) bool {
 }
 
 // HandlerAccountEvent handler for account events
-func (h *RmqHandler) HandlerAccountEvent(msg amqp.Delivery) bool {
+func (h *Handler) HandlerAccountEvent(msg amqp.Delivery) bool {
 	if msg.Body == nil {
 		logrus.Warning("Error, no message body!")
 		return false

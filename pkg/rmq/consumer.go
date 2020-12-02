@@ -19,6 +19,7 @@ type Queue struct {
 	Arguments     amqp.Table
 	requeue       bool
 	prefetchCount int
+	workers       int
 	handler       func(msg amqp.Delivery) bool
 	deliveries    <-chan amqp.Delivery
 	waitReconnect chan bool
@@ -27,7 +28,10 @@ type Queue struct {
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
-	waitReconnect := make(chan bool)
+	prefetchCount := 4
+	multiplier := 1
+	workers := prefetchCount * multiplier
+	waitReconnect := make(chan bool, workers)
 	quit := make(chan bool)
 	return &Queue{
 		Name:          name,
@@ -38,7 +42,8 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 		NoWait:        false,
 		Arguments:     arguments,
 		requeue:       true,
-		prefetchCount: 1,
+		prefetchCount: prefetchCount,
+		workers:       workers,
 		waitReconnect: waitReconnect,
 		quit:          quit,
 	}
@@ -259,7 +264,6 @@ func (c *Consumer) reconnect() error {
 }
 
 func (c *Consumer) setupChanels() error {
-	c.logger.Debug("Start setup chanels to rabbitmq")
 	var err error
 	c.channel, err = c.conn.Channel()
 	if err != nil {
@@ -270,7 +274,6 @@ func (c *Consumer) setupChanels() error {
 }
 
 func (c *Consumer) setupExchanges() error {
-	c.logger.Debug("Start setup exchanges in rabbitmq")
 	for _, exchange := range c.exchanges {
 		if err := exchange.declareAndBind(c.channel); err != nil {
 			return err
@@ -281,7 +284,6 @@ func (c *Consumer) setupExchanges() error {
 }
 
 func (c *Consumer) setupQueues() error {
-	c.logger.Debug("Start setup queues in rabbitmq")
 	for _, queue := range c.queues {
 		if err := queue.declare(c.channel); err != nil {
 			return err
@@ -293,7 +295,12 @@ func (c *Consumer) setupQueues() error {
 
 func (c *Consumer) notifyQueuesReconnect() {
 	for _, queue := range c.queues {
-		queue.waitReconnect <- true
+		if queue.handler == nil {
+			continue
+		}
+		for i := 0; i < queue.workers; i++ {
+			queue.waitReconnect <- true
+		}
 	}
 }
 
@@ -313,7 +320,9 @@ func (c *Consumer) consume() error {
 		if err := queue.consume(c.channel); err != nil {
 			return err
 		}
-		go c.consumeHandler(queue)
+		for i := 0; i < queue.workers; i++ {
+			go c.consumeHandler(queue, i)
+		}
 	}
 
 	// watcher for reconnect and shutdown
@@ -352,11 +361,12 @@ func (c *Consumer) reconsume() error {
 	return nil
 }
 
-func (c *Consumer) consumeHandler(queue *Queue) {
+func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 	for {
-		c.logger.Debugf("Start process events: queue=%s", queue.Name)
+		c.logger.Debugf("Start process events: queue=%s, worker=%d", queue.Name, workerNumber)
 
 		for delivery := range queue.deliveries {
+			c.logger.Debugf("Got event: queue=%s, worker=%d", queue.Name, workerNumber)
 			if queue.handler(delivery) {
 				if err := delivery.Ack(false); err != nil {
 					c.logger.Errorf("Falied ack %s", queue.Name)
@@ -370,6 +380,7 @@ func (c *Consumer) consumeHandler(queue *Queue) {
 
 		select {
 		case <-c.quit:
+			c.logger.Debugf("Stop process events: queue=%s, worker=%d", queue.Name, workerNumber)
 			return
 		case <-queue.waitReconnect:
 			c.logger.Errorf("Rabbit consumer closed, wait reconnect: queue=%s", queue.Name)
