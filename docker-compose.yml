@@ -20,6 +20,7 @@ services:
       - "8000:8000"
     depends_on:
       - mongo
+      - rmq
   
   mongo:
     image: mongo:4.2

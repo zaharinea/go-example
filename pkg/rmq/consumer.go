@@ -8,6 +8,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const (
+	defaultCountWorkers = 1
+	defaultMultiplier   = 1
+)
+
 // Queue struct
 type Queue struct {
 	Name              string
@@ -27,9 +32,9 @@ type Queue struct {
 
 // NewQueue returns a new Queue struct
 func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
-	prefetchCount := 2
-	multiplier := 1
-	countWorkers := prefetchCount * multiplier
+	countWorkers := defaultCountWorkers
+	multiplier := defaultMultiplier
+	prefetchCount := countWorkers * multiplier
 	quitWorkerChanels := []chan bool{}
 	deliveries := make(chan amqp.Delivery)
 	return &Queue{
