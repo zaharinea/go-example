@@ -42,7 +42,7 @@ func SetupExchangesAndQueues(consumer *Consumer, h *Handler) {
 }
 
 // HandlerCompanyEvent handler for company events
-func (h *Handler) HandlerCompanyEvent(msg amqp.Delivery) bool {
+func (h *Handler) HandlerCompanyEvent(ctx context.Context, msg amqp.Delivery) bool {
 	if msg.Body == nil {
 		logrus.Errorf("Invalid company event: msg=%s", string(msg.Body))
 		return false
@@ -60,7 +60,7 @@ func (h *Handler) HandlerCompanyEvent(msg amqp.Delivery) bool {
     "updated_at":"2020-11-20T22:56:57.565Z"
 }
 */
-func (h *Handler) HandlerAccountEvent(msg amqp.Delivery) bool {
+func (h *Handler) HandlerAccountEvent(ctx context.Context, msg amqp.Delivery) bool {
 	if msg.Body == nil {
 		logrus.Errorf("Invalid account event: msg=%s", string(msg.Body))
 		return false
@@ -73,7 +73,6 @@ func (h *Handler) HandlerAccountEvent(msg amqp.Delivery) bool {
 		return false
 	}
 
-	ctx := context.Background()
 	if _, err := h.repos.Account.CreateOrUpdate(ctx, account, false); err != nil {
 		if h.repos.IsDuplicateKeyErr(err) {
 			logrus.Infof("Skip duplicate or expired event: msg=%s", string(msg.Body))

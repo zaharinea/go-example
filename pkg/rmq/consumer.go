@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -15,19 +16,18 @@ const (
 
 // Queue struct
 type Queue struct {
-	Name              string
-	RoutingKey        string
-	Durable           bool
-	AutoDelete        bool
-	Exclusive         bool
-	NoWait            bool
-	Arguments         amqp.Table
-	requeue           bool
-	prefetchCount     int
-	handler           func(msg amqp.Delivery) bool
-	deliveries        chan amqp.Delivery
-	countWorkers      int
-	quitWorkerChanels []chan bool
+	Name          string
+	RoutingKey    string
+	Durable       bool
+	AutoDelete    bool
+	Exclusive     bool
+	NoWait        bool
+	Arguments     amqp.Table
+	requeue       bool
+	prefetchCount int
+	handler       func(ctx context.Context, msg amqp.Delivery) bool
+	deliveries    chan amqp.Delivery
+	countWorkers  int
 }
 
 // NewQueue returns a new Queue struct
@@ -35,26 +35,24 @@ func NewQueue(name string, routingKey string, requeue bool, arguments amqp.Table
 	countWorkers := defaultCountWorkers
 	multiplier := defaultMultiplier
 	prefetchCount := countWorkers * multiplier
-	quitWorkerChanels := []chan bool{}
 	deliveries := make(chan amqp.Delivery)
 	return &Queue{
-		Name:              name,
-		RoutingKey:        routingKey,
-		Durable:           true,
-		AutoDelete:        false,
-		Exclusive:         false,
-		NoWait:            false,
-		Arguments:         arguments,
-		requeue:           requeue,
-		prefetchCount:     prefetchCount,
-		deliveries:        deliveries,
-		countWorkers:      countWorkers,
-		quitWorkerChanels: quitWorkerChanels,
+		Name:          name,
+		RoutingKey:    routingKey,
+		Durable:       true,
+		AutoDelete:    false,
+		Exclusive:     false,
+		NoWait:        false,
+		Arguments:     arguments,
+		requeue:       requeue,
+		prefetchCount: prefetchCount,
+		deliveries:    deliveries,
+		countWorkers:  countWorkers,
 	}
 }
 
 // SetHandler register handler in Queue
-func (q *Queue) SetHandler(handler func(msg amqp.Delivery) bool) {
+func (q *Queue) SetHandler(handler func(ctx context.Context, msg amqp.Delivery) bool) {
 	q.handler = handler
 }
 
@@ -153,7 +151,8 @@ type Consumer struct {
 	queues           map[string]*Queue
 	exchanges        map[string]*Exchange
 	err              chan error
-	quitReconnector  chan bool
+	ctx              context.Context
+	notifyQuit       context.CancelFunc
 	reconnectTimeout time.Duration
 	logger           Logger
 }
@@ -163,13 +162,14 @@ func NewConsumer(uri string, logger Logger) *Consumer {
 	exchanges := make(map[string]*Exchange)
 	queues := make(map[string]*Queue)
 	err := make(chan error)
-	quitReconnector := make(chan bool)
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Consumer{
 		uri:              uri,
 		exchanges:        exchanges,
 		queues:           queues,
 		err:              err,
-		quitReconnector:  quitReconnector,
+		ctx:              ctx,
+		notifyQuit:       cancel,
 		reconnectTimeout: time.Second * 3,
 		logger:           logger,
 	}
@@ -203,27 +203,9 @@ func (c *Consumer) Start() {
 	}
 }
 
-func (c *Consumer) notifyWorkersQuit() {
-	for _, queue := range c.queues {
-		if queue.handler == nil {
-			continue
-		}
-
-		for _, ch := range queue.quitWorkerChanels {
-			ch <- true
-		}
-
-	}
-}
-
-func (c *Consumer) notifyReconnectorQuit() {
-	c.quitReconnector <- true
-}
-
 //Close stop consumer
 func (c *Consumer) Close() error {
-	c.notifyReconnectorQuit()
-	c.notifyWorkersQuit()
+	c.notifyQuit()
 
 	err := c.channel.Close()
 	if err != nil {
@@ -335,8 +317,6 @@ func (c *Consumer) consume() error {
 			return err
 		}
 		for i := 0; i < queue.countWorkers; i++ {
-			quit := make(chan bool)
-			queue.quitWorkerChanels = append(queue.quitWorkerChanels, quit)
 			go c.consumeHandler(queue, i)
 		}
 	}
@@ -345,7 +325,7 @@ func (c *Consumer) consume() error {
 	go func() {
 		for {
 			select {
-			case <-c.quitReconnector:
+			case <-c.ctx.Done():
 				c.logger.Debugf("Stopped watcher for reconnect")
 				return
 			case err := <-c.err:
@@ -382,7 +362,7 @@ func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 		select {
 		case delivery := <-queue.deliveries:
 			c.logger.Debugf("Got event: queue=%s, worker=%d", queue.Name, workerNumber)
-			if queue.handler(delivery) {
+			if queue.handler(c.ctx, delivery) {
 				if err := delivery.Ack(false); err != nil {
 					c.logger.Errorf("Falied ack %s", queue.Name)
 				}
@@ -393,7 +373,7 @@ func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 				}
 				c.logger.Debugf("Nack event: queue=%s, requeue=%v, worker=%d", queue.Name, queue.requeue, workerNumber)
 			}
-		case <-queue.quitWorkerChanels[workerNumber]:
+		case <-c.ctx.Done():
 			c.logger.Debugf("Stop process events: queue=%s, worker=%d", queue.Name, workerNumber)
 			return
 		}
