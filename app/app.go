@@ -10,15 +10,20 @@ import (
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/handler"
 	"github.com/zaharinea/go-example/pkg/repository"
+	"github.com/zaharinea/go-example/pkg/rmq"
 	"github.com/zaharinea/go-example/pkg/service"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 // InitLogger initialize logger
-func InitLogger(config *config.Config) {
+func InitLogger(config *config.Config) *logrus.Logger {
+	logger := logrus.New()
+
 	if strings.ToUpper(config.LogFormat) == "JSON" {
+		logger.SetFormatter(&logrus.JSONFormatter{})
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	} else {
+		logger.SetFormatter(&logrus.TextFormatter{})
 		logrus.SetFormatter(&logrus.TextFormatter{})
 	}
 
@@ -27,10 +32,13 @@ func InitLogger(config *config.Config) {
 		level = logrus.InfoLevel
 	}
 	logrus.SetLevel(level)
+	logger.SetLevel(level)
+
+	return logger
 }
 
 // InitPrometheus initialize prometheus
-func InitPrometheus(app *gin.Engine) {
+func InitPrometheus(engine *gin.Engine) {
 	p := ginprometheus.NewPrometheus("gin")
 	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
 		url := c.Request.URL.Path
@@ -42,12 +50,18 @@ func InitPrometheus(app *gin.Engine) {
 		}
 		return url
 	}
-	p.Use(app)
+	p.Use(engine)
 }
 
-// NewApp return new gin
-func NewApp(config *config.Config) *gin.Engine {
-	InitLogger(config)
+// App struct
+type App struct {
+	Engine      *gin.Engine
+	RmqConsumer *rmq.Consumer
+}
+
+// NewApp return new gin engine
+func NewApp(config *config.Config) *App {
+	logger := InitLogger(config)
 
 	err := sentry.Init(sentry.ClientOptions{Dsn: config.SentryDSN, Release: config.AppVersion})
 	if err != nil {
@@ -60,14 +74,18 @@ func NewApp(config *config.Config) *gin.Engine {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	app := gin.New()
-	app.Use(handler.SetRequestIDMiddleware())
-	app.Use(handler.Logging())
-	app.Use(handler.Recovery(handler.RecoveryHandler))
-	app.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
+	rmqConsumer := rmq.NewConsumer(config.RmqURI, logger)
+	rmqHandlers := rmq.NewHandler(config, repos)
+	rmq.SetupExchangesAndQueues(rmqConsumer, rmqHandlers)
 
-	InitPrometheus(app)
-	handlers.InitRoutes(app)
+	engine := gin.New()
+	engine.Use(handler.SetRequestIDMiddleware())
+	engine.Use(handler.Logging())
+	engine.Use(handler.Recovery(handler.RecoveryHandler))
+	engine.Use(sentrygin.New(sentrygin.Options{Repanic: true}))
 
-	return app
+	InitPrometheus(engine)
+	handlers.InitRoutes(engine)
+
+	return &App{Engine: engine, RmqConsumer: rmqConsumer}
 }

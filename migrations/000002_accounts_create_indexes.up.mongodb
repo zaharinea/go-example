@@ -1,0 +1,13 @@
+[
+    {
+        "createIndexes": "accounts",
+        "indexes": [
+            {
+                "key": {"external_id": 1},
+                "name": "external_id_1",
+                "background": true,
+                "unique": true
+            }
+        ]
+    }
+]

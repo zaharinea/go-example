@@ -27,17 +27,17 @@ func NewHandler(config *config.Config, services *service.Service) *Handler {
 }
 
 // InitRoutes initialize endpoint
-func (h *Handler) InitRoutes(app *gin.Engine) {
-	app.NoRoute(NoRouteHandler)
-	app.NoMethod(NoMethodHandler)
+func (h *Handler) InitRoutes(engine *gin.Engine) {
+	engine.NoRoute(NoRouteHandler)
+	engine.NoMethod(NoMethodHandler)
 
 	url := ginSwagger.URL("/swagger/doc.json")
-	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
 
-	app.GET("/api/healthcheck", h.Healthcheck)
-	app.POST("/api/users", h.CreateUser)
-	app.GET("/api/users", h.ListUsers)
-	app.GET("/api/users/:id", h.GetUserByID)
-	app.PUT("/api/users/:id", h.UpdateUser)
-	app.DELETE("/api/users/:id", h.DeleteUserByID)
+	engine.GET("/api/healthcheck", h.Healthcheck)
+	engine.POST("/api/users", h.CreateUser)
+	engine.GET("/api/users", h.ListUsers)
+	engine.GET("/api/users/:id", h.GetUserByID)
+	engine.PUT("/api/users/:id", h.UpdateUser)
+	engine.DELETE("/api/users/:id", h.DeleteUserByID)
 }
