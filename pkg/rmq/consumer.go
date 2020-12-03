@@ -391,7 +391,7 @@ func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 				if err := delivery.Nack(false, queue.requeue); err != nil {
 					c.logger.Errorf("Falied nack %s", queue.Name)
 				}
-				c.logger.Debugf("Nack event: queue=%s, requeue=%s, worker=%d", queue.Name, queue.requeue, workerNumber)
+				c.logger.Debugf("Nack event: queue=%s, requeue=%v, worker=%d", queue.Name, queue.requeue, workerNumber)
 			}
 		case <-queue.quitWorkerChanels[workerNumber]:
 			c.logger.Debugf("Stop process events: queue=%s, worker=%d", queue.Name, workerNumber)

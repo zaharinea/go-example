@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -17,14 +18,42 @@ type IUserRepository interface {
 	DeleteAll(ctx context.Context) error
 }
 
+// IAccountRepository interface
+type IAccountRepository interface {
+	CreateOrUpdate(ctx context.Context, account Account, forceUpdate bool) (*Account, error)
+	List(ctx context.Context, limit int64, offset int64) ([]*Account, error)
+	GetByExternalID(ctx context.Context, accountExternalID string) (*Account, error)
+	DeleteByExternalID(ctx context.Context, accountExternalID string) error
+	DeleteAll(ctx context.Context) error
+}
+
 // Repository struct
 type Repository struct {
-	User IUserRepository
+	User    IUserRepository
+	Account IAccountRepository
+}
+
+// IsDuplicateKeyErr DuplicateKey error helper
+func (r *Repository) IsDuplicateKeyErr(err error) bool {
+	var writeExc mongo.WriteException
+	var commandExc mongo.CommandError
+	if errors.As(err, &writeExc) {
+		for _, we := range writeExc.WriteErrors {
+			if we.Code == 11000 {
+				return true
+			}
+		}
+	} else if errors.As(err, &commandExc) {
+		if commandExc.Code == 11000 {
+			return true
+		}
+	}
+	return false
 }
 
 // NewRepository returns a new Repository struct
 func NewRepository(db *mongo.Database) *Repository {
 	return &Repository{
-		User: NewUserRepository(db),
+		User: NewUserRepository(db), Account: NewAccountRepository(db),
 	}
 }

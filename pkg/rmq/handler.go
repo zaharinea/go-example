@@ -1,23 +1,24 @@
 package rmq
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
 
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/zaharinea/go-example/config"
-	"github.com/zaharinea/go-example/pkg/service"
+	"github.com/zaharinea/go-example/pkg/repository"
 )
 
 // Handler struct
 type Handler struct {
-	config   *config.Config
-	services *service.Service
+	config *config.Config
+	repos  *repository.Repository
 }
 
 // NewHandler returns a new RmqHandler struct
-func NewHandler(config *config.Config, services *service.Service) *Handler {
-	return &Handler{config: config, services: services}
+func NewHandler(config *config.Config, repos *repository.Repository) *Handler {
+	return &Handler{config: config, repos: repos}
 }
 
 // SetupExchangesAndQueues setup Exchanges and Queues
@@ -43,19 +44,45 @@ func SetupExchangesAndQueues(consumer *Consumer, h *Handler) {
 // HandlerCompanyEvent handler for company events
 func (h *Handler) HandlerCompanyEvent(msg amqp.Delivery) bool {
 	if msg.Body == nil {
-		logrus.Warning("Error, no message body!")
+		logrus.Errorf("Invalid company event: msg=%s", string(msg.Body))
 		return false
 	}
-	fmt.Println("company event: ", string(msg.Body))
+	logrus.Debugf("company event: msg=%s", string(msg.Body))
 	return true
 }
 
 // HandlerAccountEvent handler for account events
+/*
+{
+    "external_id":"1",
+    "name":"account1",
+    "created_at":"2020-11-20T22:56:57.565Z",
+    "updated_at":"2020-11-20T22:56:57.565Z"
+}
+*/
 func (h *Handler) HandlerAccountEvent(msg amqp.Delivery) bool {
 	if msg.Body == nil {
-		logrus.Warning("Error, no message body!")
+		logrus.Errorf("Invalid account event: msg=%s", string(msg.Body))
 		return false
 	}
-	fmt.Println("account event: ", string(msg.Body))
+	logrus.Debugf("account event: msg=%s", string(msg.Body))
+
+	var account repository.Account
+	if err := json.Unmarshal(msg.Body, &account); err != nil {
+		logrus.Errorf("Invalid account event: msg=%s, error=%s", string(msg.Body), err)
+		return false
+	}
+
+	ctx := context.Background()
+	if _, err := h.repos.Account.CreateOrUpdate(ctx, account, false); err != nil {
+		if h.repos.IsDuplicateKeyErr(err) {
+			logrus.Infof("Skip duplicate or expired event: msg=%s", string(msg.Body))
+			return true
+		}
+
+		logrus.Errorf("Failed create or update account: msg=%s, error=%s", string(msg.Body), err)
+		return false
+	}
+
 	return true
 }

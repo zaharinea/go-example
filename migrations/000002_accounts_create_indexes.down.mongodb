@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "accounts",
+    "index": "external_id_1"
+  }
+]
