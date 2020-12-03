@@ -22,14 +22,22 @@ func NewHandler(config *config.Config, services *service.Service) *Handler {
 
 // SetupExchangesAndQueues setup Exchanges and Queues
 func SetupExchangesAndQueues(consumer *Consumer, h *Handler) {
-	companyQueque := NewQueue("go-example-companies", "events.companies", amqp.Table{})
+	companyQueque := NewQueue("go-example-companies", "events.companies", false, amqp.Table{})
 	companyQueque.SetHandler(h.HandlerCompanyEvent)
 	companyExchange := NewExchange("events.companies", "fanout", amqp.Table{}, []*Queue{companyQueque})
 	consumer.RegisterExchange(companyExchange)
 
-	accountQueque := NewQueue("go-example-accounts", "", amqp.Table{})
+	accountFailedQueque := NewQueue("go-example-accounts-failed", "", false, amqp.Table{
+		"x-dead-letter-exchange":    "",
+		"x-dead-letter-routing-key": "go-example-accounts",
+		"x-message-ttl":             60 * 1000,
+	})
+	accountQueque := NewQueue("go-example-accounts", "", false, amqp.Table{
+		"x-dead-letter-exchange":    "",
+		"x-dead-letter-routing-key": "go-example-accounts-failed",
+	})
 	accountQueque.SetHandler(h.HandlerAccountEvent)
-	consumer.RegisterQueue(accountQueque)
+	consumer.RegisterQueue(accountQueque, accountFailedQueque)
 }
 
 // HandlerCompanyEvent handler for company events

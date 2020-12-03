@@ -31,7 +31,7 @@ type Queue struct {
 }
 
 // NewQueue returns a new Queue struct
-func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
+func NewQueue(name string, routingKey string, requeue bool, arguments amqp.Table) *Queue {
 	countWorkers := defaultCountWorkers
 	multiplier := defaultMultiplier
 	prefetchCount := countWorkers * multiplier
@@ -45,7 +45,7 @@ func NewQueue(name string, routingKey string, arguments amqp.Table) *Queue {
 		Exclusive:         false,
 		NoWait:            false,
 		Arguments:         arguments,
-		requeue:           true,
+		requeue:           requeue,
 		prefetchCount:     prefetchCount,
 		deliveries:        deliveries,
 		countWorkers:      countWorkers,
@@ -238,11 +238,13 @@ func (c *Consumer) Close() error {
 }
 
 //RegisterQueue register queue
-func (c *Consumer) RegisterQueue(queue *Queue) {
-	if _, exist := c.queues[queue.Name]; exist {
-		c.logger.Fatalf("Queue already registred: %s", queue.Name)
+func (c *Consumer) RegisterQueue(queues ...*Queue) {
+	for _, queue := range queues {
+		if _, exist := c.queues[queue.Name]; exist {
+			c.logger.Fatalf("Queue already registred: %s", queue.Name)
+		}
+		c.queues[queue.Name] = queue
 	}
-	c.queues[queue.Name] = queue
 }
 
 //RegisterExchange register exchange
@@ -384,10 +386,12 @@ func (c *Consumer) consumeHandler(queue *Queue, workerNumber int) {
 				if err := delivery.Ack(false); err != nil {
 					c.logger.Errorf("Falied ack %s", queue.Name)
 				}
+				c.logger.Debugf("Ack event: queue=%s, worker=%d", queue.Name, workerNumber)
 			} else {
 				if err := delivery.Nack(false, queue.requeue); err != nil {
 					c.logger.Errorf("Falied nack %s", queue.Name)
 				}
+				c.logger.Debugf("Nack event: queue=%s, requeue=%s, worker=%d", queue.Name, queue.requeue, workerNumber)
 			}
 		case <-queue.quitWorkerChanels[workerNumber]:
 			c.logger.Debugf("Stop process events: queue=%s, worker=%d", queue.Name, workerNumber)
