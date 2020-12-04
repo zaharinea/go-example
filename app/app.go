@@ -14,6 +14,7 @@ import (
 	"github.com/zaharinea/go-example/pkg/service"
 	rmqclient "github.com/zaharinea/go-rmq-client"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // InitLogger initialize logger
@@ -58,6 +59,7 @@ func InitPrometheus(engine *gin.Engine) {
 type App struct {
 	Engine      *gin.Engine
 	RmqConsumer *rmqclient.Consumer
+	DbClient    *mongo.Client
 }
 
 // NewApp return new gin engine
@@ -88,5 +90,5 @@ func NewApp(config *config.Config) *App {
 	InitPrometheus(engine)
 	handlers.InitRoutes(engine)
 
-	return &App{Engine: engine, RmqConsumer: rmqConsumer}
+	return &App{DbClient: dbClient, Engine: engine, RmqConsumer: rmqConsumer}
 }

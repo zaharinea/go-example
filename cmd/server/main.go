@@ -41,8 +41,8 @@ func main() {
 	<-quit
 	logrus.Info("Shutdown Server ...")
 
-	if err := a.RmqConsumer.Close(); err != nil {
-		logrus.Infof("Close rabbitmq consumer: %s\n", err)
+	if err := a.RmqConsumer.Stop(); err != nil {
+		logrus.Infof("Stop rabbitmq consumer: %s\n", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
