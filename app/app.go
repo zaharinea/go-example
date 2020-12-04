@@ -12,6 +12,7 @@ import (
 	"github.com/zaharinea/go-example/pkg/repository"
 	"github.com/zaharinea/go-example/pkg/rmq"
 	"github.com/zaharinea/go-example/pkg/service"
+	rmqclient "github.com/zaharinea/go-rmq-client"
 	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
@@ -56,7 +57,7 @@ func InitPrometheus(engine *gin.Engine) {
 // App struct
 type App struct {
 	Engine      *gin.Engine
-	RmqConsumer *rmq.Consumer
+	RmqConsumer *rmqclient.Consumer
 }
 
 // NewApp return new gin engine
@@ -74,7 +75,7 @@ func NewApp(config *config.Config) *App {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(config, services)
 
-	rmqConsumer := rmq.NewConsumer(config.RmqURI, logger)
+	rmqConsumer := rmqclient.NewConsumer(config.RmqURI, logger)
 	rmqHandlers := rmq.NewHandler(config, repos)
 	rmq.SetupExchangesAndQueues(rmqConsumer, rmqHandlers)
 

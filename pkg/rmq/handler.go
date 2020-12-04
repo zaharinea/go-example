@@ -8,6 +8,7 @@ import (
 	"github.com/streadway/amqp"
 	"github.com/zaharinea/go-example/config"
 	"github.com/zaharinea/go-example/pkg/repository"
+	rmqclient "github.com/zaharinea/go-rmq-client"
 )
 
 // Handler struct
@@ -22,18 +23,18 @@ func NewHandler(config *config.Config, repos *repository.Repository) *Handler {
 }
 
 // SetupExchangesAndQueues setup Exchanges and Queues
-func SetupExchangesAndQueues(consumer *Consumer, h *Handler) {
-	companyQueque := NewQueue("go-example-companies", "events.companies", false, amqp.Table{})
+func SetupExchangesAndQueues(consumer *rmqclient.Consumer, h *Handler) {
+	companyQueque := rmqclient.NewQueue("go-example-companies", "events.companies", amqp.Table{})
 	companyQueque.SetHandler(h.HandlerCompanyEvent)
-	companyExchange := NewExchange("events.companies", "fanout", amqp.Table{}, []*Queue{companyQueque})
+	companyExchange := rmqclient.NewExchange("events.companies", "fanout", amqp.Table{}, []*rmqclient.Queue{companyQueque})
 	consumer.RegisterExchange(companyExchange)
 
-	accountFailedQueque := NewQueue("go-example-accounts-failed", "", false, amqp.Table{
+	accountFailedQueque := rmqclient.NewQueue("go-example-accounts-failed", "", amqp.Table{
 		"x-dead-letter-exchange":    "",
 		"x-dead-letter-routing-key": "go-example-accounts",
 		"x-message-ttl":             60 * 1000,
 	})
-	accountQueque := NewQueue("go-example-accounts", "", false, amqp.Table{
+	accountQueque := rmqclient.NewQueue("go-example-accounts", "", amqp.Table{
 		"x-dead-letter-exchange":    "",
 		"x-dead-letter-routing-key": "go-example-accounts-failed",
 	})
