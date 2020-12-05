@@ -24,7 +24,7 @@ func (s *HealthcheckSuite) TestHealthcheck() {
 	s.router.GET("/", s.handlers.Healthcheck)
 	w := performRequest(s.router, "GET", "/", "")
 	s.Require().Equal(http.StatusOK, w.Code)
-	s.Require().Equal("{\"status\":\"ok\"}", w.Body.String())
+	s.Require().Equal(`{"status":"ok"}`, w.Body.String())
 }
 
 func TestHealthcheckSuite(t *testing.T) {

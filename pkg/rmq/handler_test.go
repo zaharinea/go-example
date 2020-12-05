@@ -50,7 +50,12 @@ func (s *RmqHanlersSuite) TestHandlerCompanyEvent() {
 }
 
 func (s *RmqHanlersSuite) TestHandlerAccountEvent() {
-	accountEvent := "{\"external_id\":\"1\",\"name\":\"account1\",\"created_at\":\"2020-11-20T00:00:00.000Z\",\"updated_at\":\"2020-11-20T00:00:00.000Z\"}"
+	accountEvent := `{
+		"external_id":"1",
+		"name":"account1",
+		"created_at":"2020-11-20T00:00:00.000Z",
+		"updated_at":"2020-11-20T00:00:00.000Z"
+	}`
 
 	msg := amqp.Delivery{Body: []byte(accountEvent)}
 	result := s.rmqHandlers.HandlerAccountEvent(s.ctx, msg)
@@ -71,7 +76,12 @@ func (s *RmqHanlersSuite) TestHandlerAccountEventSkipOld() {
 	}, true)
 	s.Require().NoError(err)
 
-	oldAccountEvent := "{\"external_id\":\"1\",\"name\":\"account0\",\"created_at\":\"2020-11-20T00:00:00.000Z\",\"updated_at\":\"2020-11-22T23:59:59.999Z\"}"
+	oldAccountEvent := `{
+		"external_id":"1",
+		"name":"account0",
+		"created_at":"2020-11-20T00:00:00.000Z",
+		"updated_at":"2020-11-22T23:59:59.999Z"
+	}`
 	msg := amqp.Delivery{Body: []byte(oldAccountEvent)}
 	result := s.rmqHandlers.HandlerAccountEvent(s.ctx, msg)
 	s.Require().Equal(true, result)

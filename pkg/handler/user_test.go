@@ -67,7 +67,7 @@ func (s *UsersSuite) TearDownTest() {}
 func (s *UsersSuite) TearSuite() {}
 
 func (s *UsersSuite) TestCreateOk() {
-	w := performRequest(s.router, "POST", "/api/users", "{\"name\": \"user\"}")
+	w := performRequest(s.router, "POST", "/api/users", `{"name": "user"}`)
 	s.Require().Equal(http.StatusCreated, w.Code)
 
 	response := ResponseUser{}
@@ -90,7 +90,7 @@ func (s *UsersSuite) TestUpdateOk() {
 	err := s.services.User.Create(s.ctx, &s.user1)
 	s.Require().NoError(err)
 
-	w := performRequest(s.router, "PUT", "/api/users/"+s.user1.ID.Hex(), "{\"name\": \"user\"}")
+	w := performRequest(s.router, "PUT", "/api/users/"+s.user1.ID.Hex(), `{"name": "user"}`)
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	response := ResponseUser{}
@@ -149,7 +149,7 @@ func (s *UsersSuite) TestGetByIDOk() {
 func (s *UsersSuite) TestListOkEmpty() {
 	w := performRequest(s.router, "GET", "/api/users", "")
 	s.Require().Equal(http.StatusOK, w.Code)
-	s.Require().Equal("{\"items\":[]}", w.Body.String())
+	s.Require().Equal(`{"items":[]}`, w.Body.String())
 }
 
 func (s *UsersSuite) TestListOk() {
