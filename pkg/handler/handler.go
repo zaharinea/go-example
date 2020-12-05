@@ -27,6 +27,9 @@ func NewHandler(config *config.Config, services *service.Service) *Handler {
 }
 
 // InitRoutes initialize endpoint
+// @title Example API
+// @version 1.0
+// @description This is an example http api server
 func (h *Handler) InitRoutes(engine *gin.Engine) {
 	engine.NoRoute(NoRouteHandler)
 	engine.NoMethod(NoMethodHandler)

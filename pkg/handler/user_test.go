@@ -119,7 +119,7 @@ func (s *UsersSuite) TestGetByIDErrorNotFound() {
 	response := errorResponse{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
-	s.Require().Equal("mongo: no documents in result", response.Message)
+	s.Require().Equal(errMessageUserNotFound, response.Message)
 }
 
 func (s *UsersSuite) TestGetByIDErrorInvalidID() {
@@ -129,7 +129,7 @@ func (s *UsersSuite) TestGetByIDErrorInvalidID() {
 	response := errorResponse{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
-	s.Require().Equal("mongo: no documents in result", response.Message)
+	s.Require().Equal(errMessageUserNotFound, response.Message)
 }
 
 func (s *UsersSuite) TestGetByIDOk() {
@@ -212,7 +212,7 @@ func (s *UsersSuite) TestDeleteErrorInvalidID() {
 	response := errorResponse{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
-	s.Require().Equal("mongo: no documents in result", response.Message)
+	s.Require().Equal(errMessageUserNotFound, response.Message)
 }
 
 func TestUsersSuite(t *testing.T) {

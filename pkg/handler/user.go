@@ -60,6 +60,8 @@ func newResponseUsers(users []*repository.User) *ResponseUsers {
 	return &ResponseUsers{Items: items}
 }
 
+const errMessageUserNotFound = "Not found user"
+
 // CreateUser handler
 // @Summary Create user
 // @Tags users
@@ -136,7 +138,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	user, err := h.services.User.GetByID(c, req.ID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			newErrorResponse(c, http.StatusNotFound, err.Error())
+			newErrorResponse(c, http.StatusNotFound, errMessageUserNotFound)
 			return
 		}
 
@@ -174,7 +176,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	updatedUser, err := h.services.User.UpdateAndReturn(c, reqURI.ID, updateUser)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			newErrorResponse(c, http.StatusNotFound, err.Error())
+			newErrorResponse(c, http.StatusNotFound, errMessageUserNotFound)
 			return
 		}
 
@@ -199,7 +201,7 @@ func (h *Handler) DeleteUserByID(c *gin.Context) {
 	err := h.services.User.DeleteByID(c, userID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			newErrorResponse(c, http.StatusNotFound, err.Error())
+			newErrorResponse(c, http.StatusNotFound, errMessageUserNotFound)
 			return
 		}
 

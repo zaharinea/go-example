@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is a simple http server",
-        "title": "Go-example API",
+        "description": "This is an example http api server",
+        "title": "Example API",
         "contact": {},
         "version": "1.0"
     },

@@ -295,8 +295,8 @@ var SwaggerInfo = swaggerInfo{
 	Host:        "",
 	BasePath:    "",
 	Schemes:     []string{},
-	Title:       "Go-example API",
-	Description: "This is a simple http server",
+	Title:       "Example API",
+	Description: "This is an example http api server",
 }
 
 type s struct{}

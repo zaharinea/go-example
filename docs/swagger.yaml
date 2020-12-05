@@ -40,8 +40,8 @@ definitions:
     type: object
 info:
   contact: {}
-  description: This is a simple http server
-  title: Go-example API
+  description: This is an example http api server
+  title: Example API
   version: "1.0"
 paths:
   /api/healthcheck:
