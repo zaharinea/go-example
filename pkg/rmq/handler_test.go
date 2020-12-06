@@ -53,8 +53,8 @@ func (s *RmqHanlersSuite) TestHandlerAccountEvent() {
 	accountEvent := `{
 		"external_id":"1",
 		"name":"account1",
-		"created_at":"2020-11-20T00:00:00.000Z",
-		"updated_at":"2020-11-20T00:00:00.000Z"
+		"created_at":"2020-11-20T00:03:00.000+00:03",
+		"updated_at":"2020-11-21T00:03:00.000+00:03"
 	}`
 
 	msg := amqp.Delivery{Body: []byte(accountEvent)}
@@ -64,6 +64,8 @@ func (s *RmqHanlersSuite) TestHandlerAccountEvent() {
 	dbAccount, err := s.repos.Account.GetByExternalID(s.ctx, "1")
 	s.Require().NoError(err)
 	s.Require().Equal("account1", dbAccount.Name)
+	s.Require().Equal(time.Date(2020, 11, 20, 0, 0, 0, 0, time.UTC), dbAccount.CreatedAt)
+	s.Require().Equal(time.Date(2020, 11, 21, 0, 0, 0, 0, time.UTC), dbAccount.UpdatedAt)
 }
 
 func (s *RmqHanlersSuite) TestHandlerAccountEventSkipOld() {
@@ -71,8 +73,8 @@ func (s *RmqHanlersSuite) TestHandlerAccountEventSkipOld() {
 		ID:         primitive.NewObjectID(),
 		ExternalID: "1",
 		Name:       "account1",
-		CreatedAt:  time.Date(2020, 11, 20, 00, 0, 0, 0, time.UTC),
-		UpdatedAt:  time.Date(2020, 11, 23, 00, 0, 0, 0, time.UTC),
+		CreatedAt:  time.Date(2020, 11, 20, 0, 0, 0, 0, time.UTC),
+		UpdatedAt:  time.Date(2020, 11, 23, 0, 0, 0, 0, time.UTC),
 	}, true)
 	s.Require().NoError(err)
 
@@ -89,7 +91,6 @@ func (s *RmqHanlersSuite) TestHandlerAccountEventSkipOld() {
 	dbAccount, err := s.repos.Account.GetByExternalID(s.ctx, "1")
 	s.Require().NoError(err)
 	s.Require().Equal("account1", dbAccount.Name)
-
 }
 
 func TestRmqHanlersSuite(t *testing.T) {
