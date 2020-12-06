@@ -19,7 +19,7 @@ func main() {
 
 	a.RmqConsumer.Start()
 
-	srv := &http.Server{
+	httpSrv := &http.Server{
 		Addr:           c.AppAddr,
 		Handler:        a.Engine,
 		ReadTimeout:    10 * time.Second,
@@ -27,7 +27,7 @@ func main() {
 		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 	go func() {
-		if err := srv.ListenAndServe(); err != nil {
+		if err := httpSrv.ListenAndServe(); err != nil {
 			logrus.Infof("listen: %s\n", err)
 		}
 	}()
@@ -44,8 +44,15 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		logrus.Fatal("Server Shutdown:", err)
+
+	if err := httpSrv.Shutdown(ctx); err != nil {
+		logrus.Fatal("Http server shutdown:", err)
 	}
+
+	if err := a.DbClient.Disconnect(ctx); err != nil {
+		logrus.Fatal("MongoDB client disconnect:", err)
+	}
+	logrus.Info("Connection to MongoDB closed")
+
 	logrus.Info("Server exiting")
 }
