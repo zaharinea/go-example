@@ -40,6 +40,8 @@ func SetupExchangesAndQueues(consumer *rmqclient.Consumer, h *Handler) {
 	})
 	accountQueque.SetHandler(h.HandlerAccountEvent)
 	consumer.RegisterQueue(accountQueque, accountFailedQueque)
+
+	consumer.RegisterMiddleware(loggingMiddleware, prometheusMiddleware)
 }
 
 // HandlerCompanyEvent handler for company events
@@ -48,7 +50,6 @@ func (h *Handler) HandlerCompanyEvent(ctx context.Context, msg amqp.Delivery) bo
 		logrus.Errorf("Invalid company event: msg=%s", string(msg.Body))
 		return false
 	}
-	logrus.Debugf("company event: msg=%s", string(msg.Body))
 	return true
 }
 
@@ -66,7 +67,6 @@ func (h *Handler) HandlerAccountEvent(ctx context.Context, msg amqp.Delivery) bo
 		logrus.Errorf("Invalid account event: msg=%s", string(msg.Body))
 		return false
 	}
-	logrus.Debugf("account event: msg=%s", string(msg.Body))
 
 	var account repository.Account
 	if err := json.Unmarshal(msg.Body, &account); err != nil {

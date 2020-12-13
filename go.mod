@@ -11,14 +11,14 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/joho/godotenv v1.3.0
 	github.com/kisielk/errcheck v1.4.0 // indirect
-	github.com/prometheus/client_golang v1.8.0 // indirect
+	github.com/prometheus/client_golang v1.8.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.6.1
 	github.com/swaggo/files v0.0.0-20190704085106-630677cd5c14
 	github.com/swaggo/gin-swagger v1.3.0
 	github.com/swaggo/swag v1.6.9
-	github.com/zaharinea/go-rmq-client v0.0.0-20201204134234-d56eb9b706e4
+	github.com/zaharinea/go-rmq-client v0.0.0-20201213151100-ebf989c5723f
 	github.com/zsais/go-gin-prometheus v0.1.0
 	go.mongodb.org/mongo-driver v1.4.3
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
